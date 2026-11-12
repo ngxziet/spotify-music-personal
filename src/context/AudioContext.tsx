@@ -9,6 +9,8 @@ import {
   removeRecentlyPlayedItem,
   getStoredLastPlayed,
   saveStoredLastPlayed,
+  getStoredQueue,
+  saveStoredQueue,
 } from '@/utils/storage';
 import { CURATED_SONGS } from '@/data/mockData';
 
@@ -64,6 +66,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const ytTimerRef = useRef<any>(null);
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
   const userWantsPlayingRef = useRef<boolean>(false);
+  const ytVideoCuedRef = useRef<string>('');
+  const lastSavedTimeRef = useRef<number>(0);
 
   const [currentSong, setCurrentSong] = useState<Song | null>(() => CURATED_SONGS[0]);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -81,6 +85,38 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [isNowPlayingOpen, setIsNowPlayingOpen] = useState<boolean>(false);
   const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
   const [isQueueOpen, setIsQueueOpen] = useState<boolean>(false);
+
+  // Live state refs to guarantee accurate data in beforeunload and timers
+  const currentSongRef = useRef<Song | null>(currentSong);
+  const currentTimeRef = useRef<number>(currentTime);
+  const isPlayingRef = useRef<boolean>(isPlaying);
+  const queueRef = useRef<Song[]>(queue);
+
+  useEffect(() => { currentSongRef.current = currentSong; }, [currentSong]);
+  useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { queueRef.current = queue; }, [queue]);
+
+  // Persist current song, position and queue before page reload or tab close
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onBeforeUnload = () => {
+      if (currentSongRef.current) {
+        saveStoredLastPlayed(
+          currentSongRef.current,
+          currentTimeRef.current,
+          isPlayingRef.current
+        );
+      }
+      if (queueRef.current && queueRef.current.length > 0) {
+        saveStoredQueue(queueRef.current);
+      }
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
 
   // Initialize HTML5 Audio element
   useEffect(() => {
@@ -109,12 +145,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     const onTimeUpdate = () => {
-      if (audio && !currentSong?.youtubeId) {
-        setCurrentTime(audio.currentTime);
+      if (audio && !currentSongRef.current?.youtubeId) {
+        const t = audio.currentTime;
+        setCurrentTime(t);
+        if (Math.abs(t - lastSavedTimeRef.current) >= 2) {
+          lastSavedTimeRef.current = t;
+          if (currentSongRef.current) {
+            saveStoredLastPlayed(currentSongRef.current, t, isPlayingRef.current);
+          }
+        }
       }
     };
     const onLoadedMetadata = () => {
-      if (audio && !currentSong?.youtubeId) {
+      if (audio && !currentSongRef.current?.youtubeId) {
         setDuration(audio.duration || 0);
       }
     };
@@ -133,23 +176,28 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Restore listening history and last played song from localStorage on mount
+  // Restore listening history, queue and last played song from localStorage on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const storedHistory = getStoredRecentlyPlayed();
     if (storedHistory && storedHistory.length > 0) {
       setHistory(storedHistory);
     }
+    const storedQueue = getStoredQueue();
+    if (storedQueue && storedQueue.length > 0) {
+      setQueue(storedQueue);
+    }
     const lastPlayed = getStoredLastPlayed();
     if (lastPlayed?.song) {
       setCurrentSong(lastPlayed.song);
-      setDuration(lastPlayed.song.duration || 210);
-      if (lastPlayed.currentTime && lastPlayed.currentTime > 0) {
-        setCurrentTime(lastPlayed.currentTime);
-      }
+      setDuration(lastPlayed.song.duration || lastPlayed.duration || 210);
+      const savedTime = lastPlayed.currentTime || 0;
+      setCurrentTime(savedTime);
+      lastSavedTimeRef.current = savedTime;
+
       if (!lastPlayed.song.youtubeId && audioRef.current && lastPlayed.song.audioUrl) {
         audioRef.current.src = lastPlayed.song.audioUrl;
-        audioRef.current.currentTime = lastPlayed.currentTime || 0;
+        audioRef.current.currentTime = savedTime;
       }
     }
   }, []);
@@ -174,6 +222,20 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             iv_load_policy: 3,
           },
           events: {
+            onReady: (event: any) => {
+              const lastPlayed = getStoredLastPlayed();
+              if (lastPlayed?.song?.youtubeId) {
+                try {
+                  event.target.cueVideoById({
+                    videoId: lastPlayed.song.youtubeId,
+                    startSeconds: lastPlayed.currentTime || 0,
+                  });
+                  ytVideoCuedRef.current = lastPlayed.song.youtubeId;
+                } catch (e) {
+                  console.warn('Failed to cue restored YouTube track:', e);
+                }
+              }
+            },
             onStateChange: (event: any) => {
               // 1 = PLAYING
               if (event.data === 1) {
@@ -223,7 +285,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Poll current time when playing YouTube track
+  // Poll current time when playing YouTube track & save progress
   useEffect(() => {
     if (currentSong?.youtubeId && isPlaying) {
       ytTimerRef.current = setInterval(() => {
@@ -231,7 +293,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           try {
             const t = ytPlayerRef.current.getCurrentTime();
             const d = ytPlayerRef.current.getDuration();
-            if (t !== undefined && !isNaN(t)) setCurrentTime(t);
+            if (t !== undefined && !isNaN(t)) {
+              setCurrentTime(t);
+              if (Math.abs(t - lastSavedTimeRef.current) >= 2) {
+                lastSavedTimeRef.current = t;
+                if (currentSongRef.current) {
+                  saveStoredLastPlayed(currentSongRef.current, t, true);
+                }
+              }
+            }
             if (d && d > 0 && !isNaN(d)) setDuration(d);
           } catch {}
         }
@@ -244,6 +314,25 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (ytTimerRef.current) clearInterval(ytTimerRef.current);
     };
   }, [currentSong?.youtubeId, isPlaying]);
+
+  // Ensure the YouTube player has cued the currentSong if restored from reload
+  useEffect(() => {
+    if (
+      currentSong?.youtubeId &&
+      ytPlayerRef.current &&
+      typeof ytPlayerRef.current.cueVideoById === 'function' &&
+      ytVideoCuedRef.current !== currentSong.youtubeId &&
+      !isPlaying
+    ) {
+      try {
+        ytPlayerRef.current.cueVideoById({
+          videoId: currentSong.youtubeId,
+          startSeconds: currentTime || 0,
+        });
+        ytVideoCuedRef.current = currentSong.youtubeId;
+      } catch {}
+    }
+  }, [currentSong?.youtubeId, isPlaying, currentTime]);
 
   // Keep background audio active when tab visibility changes (opening other tabs)
   useEffect(() => {
@@ -358,17 +447,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
     setCurrentSong(songWithTime);
     setCurrentTime(0);
+    lastSavedTimeRef.current = 0;
     setDuration(songWithTime.duration || 210);
     addRecentlyPlayed(songWithTime);
     setHistory((prev) => {
       const filtered = prev.filter((s) => s.id !== song.id);
       return [songWithTime, ...filtered].slice(0, 50);
     });
-    saveStoredLastPlayed(songWithTime, 0);
+    saveStoredLastPlayed(songWithTime, 0, true);
     userWantsPlayingRef.current = true;
     silentAudioRef.current?.play().catch(() => {});
 
     if (songWithTime.youtubeId) {
+      ytVideoCuedRef.current = songWithTime.youtubeId;
       // Pause HTML5 audio
       if (audioRef.current) {
         audioRef.current.pause();
@@ -417,35 +508,53 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (newQueue) {
       const filteredQueue = newQueue.filter((s) => s.id !== song.id);
       setQueue(filteredQueue);
+      saveStoredQueue(filteredQueue);
     }
     playSongInternal(song);
   };
 
   const togglePlay = () => {
     if (isPlaying) {
-      userWantsPlayingRef.current = false;
-      silentAudioRef.current?.pause();
-      if (currentSong?.youtubeId) {
-        ytPlayerRef.current?.pauseVideo();
-      } else {
-        audioRef.current?.pause();
-      }
-      setIsPlaying(false);
-      if (currentSong) {
-        saveStoredLastPlayed(currentSong, currentTime);
-      }
+      pauseSong();
     } else {
+      if (!currentSong) return;
       userWantsPlayingRef.current = true;
       silentAudioRef.current?.play().catch(() => {});
-      if (currentSong?.youtubeId) {
-        ytPlayerRef.current?.playVideo();
-        setIsPlaying(true);
+
+      if (currentSong.youtubeId) {
+        if (ytPlayerRef.current && typeof ytPlayerRef.current.playVideo === 'function') {
+          try {
+            const currentData = ytPlayerRef.current.getVideoData?.();
+            const currentVideoId = currentData?.video_id;
+            if (currentVideoId !== currentSong.youtubeId) {
+              ytPlayerRef.current.loadVideoById({
+                videoId: currentSong.youtubeId,
+                startSeconds: currentTime || 0,
+              });
+              ytVideoCuedRef.current = currentSong.youtubeId;
+            } else {
+              ytPlayerRef.current.playVideo();
+            }
+            setIsPlaying(true);
+            saveStoredLastPlayed(currentSong, currentTime, true);
+          } catch {
+            playSongInternal(currentSong);
+          }
+        } else {
+          playSongInternal(currentSong);
+        }
       } else {
         const audio = audioRef.current;
         if (!audio) return;
-        if (audio.src) {
-          audio.play().catch(console.error);
-        } else if (currentSong) {
+        if (audio.src && audio.src.includes(currentSong.audioUrl)) {
+          audio.currentTime = currentTime || 0;
+          audio.play().then(() => {
+            setIsPlaying(true);
+            saveStoredLastPlayed(currentSong, currentTime, true);
+          }).catch(() => {
+            playSongInternal(currentSong);
+          });
+        } else {
           playSongInternal(currentSong);
         }
       }
@@ -462,23 +571,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
     setIsPlaying(false);
     if (currentSong) {
-      saveStoredLastPlayed(currentSong, currentTime);
+      saveStoredLastPlayed(currentSong, currentTime, false);
     }
   };
 
   const resumeSong = () => {
-    userWantsPlayingRef.current = true;
-    silentAudioRef.current?.play().catch(() => {});
-    if (currentSong?.youtubeId) {
-      ytPlayerRef.current?.playVideo();
-      setIsPlaying(true);
-    } else {
-      audioRef.current?.play().catch(console.error);
-    }
+    togglePlay();
   };
 
   const seekTo = (time: number) => {
     setCurrentTime(time);
+    lastSavedTimeRef.current = time;
     if (currentSong?.youtubeId) {
       try {
         ytPlayerRef.current?.seekTo(time, true);
@@ -487,7 +590,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       audioRef.current.currentTime = time;
     }
     if (currentSong) {
-      saveStoredLastPlayed(currentSong, time);
+      saveStoredLastPlayed(currentSong, time, isPlaying);
     }
   };
 
@@ -540,15 +643,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToQueue = (song: Song) => {
-    setQueue((prev) => [...prev, song]);
+    setQueue((prev) => {
+      const updated = [...prev, song];
+      saveStoredQueue(updated);
+      return updated;
+    });
   };
 
   const removeFromQueue = (index: number) => {
-    setQueue((prev) => prev.filter((_, i) => i !== index));
+    setQueue((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      saveStoredQueue(updated);
+      return updated;
+    });
   };
 
   const clearQueue = () => {
     setQueue([]);
+    saveStoredQueue([]);
   };
 
   const clearHistory = useCallback(() => {

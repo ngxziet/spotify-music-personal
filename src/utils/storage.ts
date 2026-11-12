@@ -301,10 +301,13 @@ export function removeRecentlyPlayedItem(songId: string) {
 }
 
 const STORAGE_LAST_PLAYED = 'soundwave_last_played_state';
+const STORAGE_QUEUE = 'soundwave_saved_queue';
 
 export interface StoredPlaybackState {
   song: Song;
   currentTime?: number;
+  duration?: number;
+  wasPlaying?: boolean;
 }
 
 export function getStoredLastPlayed(): StoredPlaybackState | null {
@@ -317,10 +320,68 @@ export function getStoredLastPlayed(): StoredPlaybackState | null {
   }
 }
 
-export function saveStoredLastPlayed(song: Song, currentTime: number = 0) {
+export function saveStoredLastPlayed(song: Song, currentTime: number = 0, wasPlaying: boolean = false) {
+  if (typeof window === 'undefined' || !song) return;
+  try {
+    const cleanSong: Song = {
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album || '',
+      duration: song.duration || 210,
+      audioUrl: song.audioUrl || '',
+      coverUrl: song.coverUrl || '',
+      category: song.category || '',
+      lyrics: song.lyrics || '',
+      isLocal: !!song.isLocal,
+      isDownloaded: !!song.isDownloaded,
+      source: song.source || 'curated',
+      isFullTrack: !!song.isFullTrack,
+      youtubeId: song.youtubeId || '',
+      playedAt: song.playedAt || new Date().toISOString(),
+    };
+    localStorage.setItem(
+      STORAGE_LAST_PLAYED,
+      JSON.stringify({
+        song: cleanSong,
+        currentTime: Math.floor(currentTime || 0),
+        duration: song.duration || 210,
+        wasPlaying: !!wasPlaying,
+        updatedAt: new Date().toISOString(),
+      })
+    );
+  } catch (err) {
+    console.error('Failed to save last played:', err);
+  }
+}
+
+export function getStoredQueue(): Song[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_QUEUE);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredQueue(queue: Song[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_LAST_PLAYED, JSON.stringify({ song, currentTime }));
+    const cleanQueue = queue.slice(0, 30).map((s) => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album || '',
+      duration: s.duration || 210,
+      audioUrl: s.audioUrl || '',
+      coverUrl: s.coverUrl || '',
+      category: s.category || '',
+      source: s.source || 'curated',
+      isFullTrack: !!s.isFullTrack,
+      youtubeId: s.youtubeId || '',
+    }));
+    localStorage.setItem(STORAGE_QUEUE, JSON.stringify(cleanQueue));
   } catch {}
 }
 
