@@ -40,7 +40,7 @@ export function Sidebar({ onOpenCreatePlaylist, onOpenUploadSong }: SidebarProps
             <Music className="w-5 h-5 fill-black stroke-black" />
           </div>
           <span className="font-bold text-white text-lg tracking-tight group-hover:text-[#1ed760] transition-colors">
-            Spotify <span className="text-xs text-[#1ed760] font-normal">Personal</span>
+            SoundWave <span className="text-xs text-[#1ed760] font-normal">Music</span>
           </span>
         </Link>
 

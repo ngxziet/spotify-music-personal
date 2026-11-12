@@ -106,7 +106,7 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
             Đang Phát Bài Hát
           </p>
           <p className="text-xs font-semibold text-zinc-200 truncate max-w-[200px]">
-            {currentSong.album || 'Spotify Music'}
+            {currentSong.album || 'SoundWave Music'}
           </p>
         </div>
 

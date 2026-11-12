@@ -13,7 +13,7 @@ export function LyricsModal() {
   const defaultLyrics = currentSong?.lyrics || `[00:00.00] ♫ Giai điệu đang vang lên...
 [00:10.00] Lắng nghe từng nhịp đập của âm thanh
 [00:20.00] Hòa mình vào không gian âm nhạc thư thái
-[00:30.00] Cùng Spotify Clone tận hưởng phút giây này!
+[00:30.00] Cùng SoundWave tận hưởng phút giây này!
 [00:45.00] (Không có lời bài hát chi tiết cho track này)
 [01:00.00] ♫ Tận hưởng giai điệu tuyệt vời ♫`;
 
@@ -47,7 +47,7 @@ export function LyricsModal() {
             </div>
             <div>
               <h3 className="font-bold text-base text-white">{currentSong?.title || 'Chưa chọn bài hát'}</h3>
-              <p className="text-xs text-zinc-300">{currentSong?.artist || 'Spotify Player'}</p>
+              <p className="text-xs text-zinc-300">{currentSong?.artist || 'SoundWave Player'}</p>
             </div>
           </div>
 

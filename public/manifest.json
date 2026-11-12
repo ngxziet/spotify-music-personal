@@ -1,7 +1,7 @@
 {
-  "name": "Spotify - Web Nghe Nhạc Cá Nhân",
-  "short_name": "Spotify",
-  "description": "Ứng dụng nghe nhạc cá nhân phong cách Spotify, hỗ trợ tải nhạc offline và thư viện riêng.",
+  "name": "SoundWave - Web Nghe Nhạc Cá Nhân",
+  "short_name": "SoundWave",
+  "description": "Ứng dụng nghe nhạc cá nhân SoundWave, hỗ trợ tải nhạc offline và thư viện riêng.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

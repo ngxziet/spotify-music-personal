@@ -88,7 +88,7 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
         {/* Info */}
         <div className="flex-1 space-y-2 text-white">
           <span className="text-xs uppercase font-extrabold tracking-widest text-zinc-300">
-            {playlist.isCustom ? 'Playlist Cá Nhân' : 'Tuyển Chọn Spotify'}
+            {playlist.isCustom ? 'Playlist Cá Nhân' : 'Tuyển Chọn SoundWave'}
           </span>
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight line-clamp-2">
             {playlist.title}
@@ -98,7 +98,7 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
           </p>
           <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium pt-2">
             <span className="font-bold text-white">
-              {playlist.isCustom ? 'Tạo bởi bạn' : 'Spotify Curated'}
+              {playlist.isCustom ? 'Tạo bởi bạn' : 'SoundWave Curated'}
             </span>
             <span>•</span>
             <span>{playlist.songs.length} bài hát</span>

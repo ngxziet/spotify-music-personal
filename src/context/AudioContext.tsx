@@ -115,7 +115,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title,
       artist: currentSong.artist,
-      album: currentSong.album || 'Spotify Music App',
+      album: currentSong.album || 'SoundWave Music App',
       artwork: [
         { src: currentSong.coverUrl, sizes: '96x96', type: 'image/jpeg' },
         { src: currentSong.coverUrl, sizes: '128x128', type: 'image/jpeg' },

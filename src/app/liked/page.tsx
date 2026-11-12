@@ -56,7 +56,7 @@ export default function LikedSongsPage() {
             Bài Hát Đã Thích
           </h1>
           <p className="text-xs md:text-sm text-zinc-300 line-clamp-1 pt-1">
-            Tuyển tập các bài hát bạn yêu thích nhất trên Spotify
+            Tuyển tập các bài hát bạn yêu thích nhất trên SoundWave
           </p>
           <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium pt-2">
             <span className="font-bold text-white">Bộ sưu tập cá nhân</span>

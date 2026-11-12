@@ -3,8 +3,8 @@ import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
-  title: "Spotify - Web Nghe Nhạc Cá Nhân",
-  description: "Web nghe nhạc cá nhân hiện đại phong cách Spotify, tải nhạc MP3 offline, quản lý album và danh sách phát riêng.",
+  title: "SoundWave - Web Nghe Nhạc Cá Nhân",
+  description: "Trình nghe nhạc cá nhân hiện đại, tải nhạc MP3 offline, quản lý album và danh sách phát riêng.",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Spotify",
+    title: "SoundWave",
   },
 };
 

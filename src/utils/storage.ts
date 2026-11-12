@@ -278,8 +278,8 @@ export function addRecentlyPlayed(song: Song) {
 
 export const DEFAULT_USER: UserProfile = {
   id: 'user-default-1',
-  name: 'Spotify VIP User',
-  email: 'user@spotify.clone',
+  name: 'SoundWave VIP',
+  email: 'user@soundwave.io',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
   bio: 'Yêu âm nhạc mỗi ngày 🎵 Lofi & V-Pop',
   plan: 'Premium VIP',
