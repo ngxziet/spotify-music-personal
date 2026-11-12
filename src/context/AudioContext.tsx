@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { Song, RepeatMode } from '@/types';
 import { addRecentlyPlayed } from '@/utils/storage';
+import { CURATED_SONGS } from '@/data/mockData';
 
 interface AudioContextType {
   currentSong: Song | null;
@@ -44,10 +45,10 @@ const AudioContext = createContext<AudioContextType | undefined>(undefined);
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [currentSong, setCurrentSong] = useState<Song | null>(() => CURATED_SONGS[0]);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(() => CURATED_SONGS[0].duration);
   const [volume, setVolumeState] = useState<number>(0.8);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
@@ -66,6 +67,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return;
 
     const audio = new Audio();
+    audio.src = CURATED_SONGS[0].audioUrl;
+    audio.preload = 'metadata';
     audioRef.current = audio;
 
     // Load saved volume
@@ -316,6 +319,38 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       audioRef.current.playbackRate = rate;
     }
   };
+
+  // Global Keyboard Shortcuts (Space for Play/Pause, KeyM for Mute, Arrow Keys for Seek)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        toggleMute();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        if (audioRef.current) {
+          audioRef.current.currentTime = Math.min(
+            audioRef.current.duration || 0,
+            audioRef.current.currentTime + 5
+          );
+        }
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        if (audioRef.current) {
+          audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 5);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlay, toggleMute]);
 
   return (
     <AudioContext.Provider

@@ -52,9 +52,22 @@ export default function HomePage() {
               <p className="font-bold text-sm text-white truncate">Bài Hát Đã Thích</p>
               <p className="text-xs text-zinc-400 truncate">{likedCount} bài hát</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-[#1ed760] text-black opacity-0 group-hover:opacity-100 flex items-center justify-center shadow-lg transition-all scale-95 group-hover:scale-100 flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const allLiked = CURATED_SONGS.filter((s) => likedSongIds.includes(s.id));
+                if (allLiked.length > 0) {
+                  playSong(allLiked[0], allLiked);
+                } else {
+                  playSong(CURATED_SONGS[0], CURATED_SONGS);
+                }
+              }}
+              className="w-10 h-10 rounded-full bg-[#1ed760] text-black opacity-0 group-hover:opacity-100 flex items-center justify-center shadow-lg transition-all scale-95 group-hover:scale-100 flex-shrink-0 hover:scale-105 active:scale-95"
+              title="Phát bài hát đã thích"
+            >
               <Play className="w-5 h-5 fill-black ml-0.5" />
-            </div>
+            </button>
           </Link>
 
           {/* Quick Playlists */}
