@@ -53,6 +53,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytPlayerRef = useRef<any>(null);
   const ytTimerRef = useRef<any>(null);
+  const silentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const userWantsPlayingRef = useRef<boolean>(false);
 
   const [currentSong, setCurrentSong] = useState<Song | null>(() => CURATED_SONGS[0]);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -79,6 +81,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     audio.src = CURATED_SONGS[0].audioUrl;
     audio.preload = 'metadata';
     audioRef.current = audio;
+
+    // Background media-lock keeper: loop silent WAV to prevent background tab audio suspension
+    const silent = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+    silent.loop = true;
+    silent.volume = 0.001;
+    silentAudioRef.current = silent;
 
     const savedVol = localStorage.getItem('spotify_volume');
     if (savedVol) {
@@ -140,12 +148,27 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
               // 1 = PLAYING
               if (event.data === 1) {
                 setIsPlaying(true);
+                userWantsPlayingRef.current = true;
+                silentAudioRef.current?.play().catch(() => {});
                 const d = ytPlayerRef.current?.getDuration();
                 if (d && d > 0) setDuration(d);
               }
               // 2 = PAUSED
               else if (event.data === 2) {
-                setIsPlaying(false);
+                // If the user wants it playing and document is hidden (user switched tabs),
+                // YouTube tried to auto-pause: immediately resume playback in background!
+                if (userWantsPlayingRef.current && document.hidden) {
+                  setTimeout(() => {
+                    try {
+                      ytPlayerRef.current?.playVideo();
+                    } catch {}
+                  }, 80);
+                  return;
+                }
+                if (!userWantsPlayingRef.current) {
+                  setIsPlaying(false);
+                  silentAudioRef.current?.pause();
+                }
               }
               // 0 = ENDED
               else if (event.data === 0) {
@@ -191,6 +214,25 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (ytTimerRef.current) clearInterval(ytTimerRef.current);
     };
   }, [currentSong?.youtubeId, isPlaying]);
+
+  // Keep background audio active when tab visibility changes (opening other tabs)
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden && userWantsPlayingRef.current) {
+        silentAudioRef.current?.play().catch(() => {});
+        if (currentSong?.youtubeId && ytPlayerRef.current) {
+          setTimeout(() => {
+            try {
+              ytPlayerRef.current.playVideo();
+            } catch {}
+          }, 100);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [currentSong?.youtubeId]);
 
   // Update MediaSession metadata
   useEffect(() => {
@@ -288,6 +330,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     setCurrentTime(0);
     setDuration(song.duration || 210);
     addRecentlyPlayed(song);
+    userWantsPlayingRef.current = true;
+    silentAudioRef.current?.play().catch(() => {});
 
     if (song.youtubeId) {
       // Pause HTML5 audio
@@ -346,21 +390,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const togglePlay = () => {
-    if (currentSong?.youtubeId) {
-      if (isPlaying) {
+    if (isPlaying) {
+      userWantsPlayingRef.current = false;
+      silentAudioRef.current?.pause();
+      if (currentSong?.youtubeId) {
         ytPlayerRef.current?.pauseVideo();
-        setIsPlaying(false);
       } else {
+        audioRef.current?.pause();
+      }
+      setIsPlaying(false);
+    } else {
+      userWantsPlayingRef.current = true;
+      silentAudioRef.current?.play().catch(() => {});
+      if (currentSong?.youtubeId) {
         ytPlayerRef.current?.playVideo();
         setIsPlaying(true);
-      }
-    } else {
-      const audio = audioRef.current;
-      if (!audio) return;
-
-      if (isPlaying) {
-        audio.pause();
       } else {
+        const audio = audioRef.current;
+        if (!audio) return;
         if (audio.src) {
           audio.play().catch(console.error);
         } else if (currentSong) {
@@ -371,15 +418,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const pauseSong = () => {
+    userWantsPlayingRef.current = false;
+    silentAudioRef.current?.pause();
     if (currentSong?.youtubeId) {
       ytPlayerRef.current?.pauseVideo();
-      setIsPlaying(false);
     } else {
       audioRef.current?.pause();
     }
+    setIsPlaying(false);
   };
 
   const resumeSong = () => {
+    userWantsPlayingRef.current = true;
+    silentAudioRef.current?.play().catch(() => {});
     if (currentSong?.youtubeId) {
       ytPlayerRef.current?.playVideo();
       setIsPlaying(true);

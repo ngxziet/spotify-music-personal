@@ -54,9 +54,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <LyricsModal />
         <QueueDrawer />
 
-        {/* Hidden YouTube Audio Engine Element */}
+        {/* Background YouTube Audio Engine (Kept inside viewport with 0.01 opacity for background playback across tabs) */}
         <div
-          className="fixed -bottom-[500px] -right-[500px] w-10 h-10 opacity-0 pointer-events-none overflow-hidden"
+          className="fixed bottom-0 right-0 w-[200px] h-[150px] -z-50 pointer-events-none"
+          style={{ opacity: 0.01 }}
           aria-hidden="true"
         >
           <div id="soundwave-yt-player" />
