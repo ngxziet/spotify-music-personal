@@ -11,8 +11,9 @@ export interface Song {
   isLocal?: boolean;
   isDownloaded?: boolean;
   downloadedAt?: string;
-  source?: 'curated' | 'audius' | 'itunes' | 'local';
+  source?: 'curated' | 'audius' | 'youtube' | 'itunes' | 'local';
   isFullTrack?: boolean;
+  youtubeId?: string;
 }
 
 export interface Playlist {

@@ -54,6 +54,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <LyricsModal />
         <QueueDrawer />
 
+        {/* Hidden YouTube Audio Engine Element */}
+        <div
+          className="fixed -bottom-[500px] -right-[500px] w-10 h-10 opacity-0 pointer-events-none overflow-hidden"
+          aria-hidden="true"
+        >
+          <div id="soundwave-yt-player" />
+        </div>
+
         <CreatePlaylistModal
           isOpen={isCreatePlaylistOpen}
           onClose={() => setIsCreatePlaylistOpen(false)}
