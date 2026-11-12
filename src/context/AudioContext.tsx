@@ -2,7 +2,14 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { Song, RepeatMode } from '@/types';
-import { addRecentlyPlayed } from '@/utils/storage';
+import {
+  addRecentlyPlayed,
+  getStoredRecentlyPlayed,
+  clearStoredRecentlyPlayed,
+  removeRecentlyPlayedItem,
+  getStoredLastPlayed,
+  saveStoredLastPlayed,
+} from '@/utils/storage';
 import { CURATED_SONGS } from '@/data/mockData';
 
 declare global {
@@ -41,6 +48,8 @@ interface AudioContextType {
   addToQueue: (song: Song) => void;
   removeFromQueue: (index: number) => void;
   clearQueue: () => void;
+  clearHistory: () => void;
+  removeFromHistory: (songId: string) => void;
   setPlaybackRate: (rate: number) => void;
   setIsNowPlayingOpen: (open: boolean) => void;
   setIsLyricsOpen: (open: boolean) => void;
@@ -122,6 +131,27 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.pause();
     };
+  }, []);
+
+  // Restore listening history and last played song from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedHistory = getStoredRecentlyPlayed();
+    if (storedHistory && storedHistory.length > 0) {
+      setHistory(storedHistory);
+    }
+    const lastPlayed = getStoredLastPlayed();
+    if (lastPlayed?.song) {
+      setCurrentSong(lastPlayed.song);
+      setDuration(lastPlayed.song.duration || 210);
+      if (lastPlayed.currentTime && lastPlayed.currentTime > 0) {
+        setCurrentTime(lastPlayed.currentTime);
+      }
+      if (!lastPlayed.song.youtubeId && audioRef.current && lastPlayed.song.audioUrl) {
+        audioRef.current.src = lastPlayed.song.audioUrl;
+        audioRef.current.currentTime = lastPlayed.currentTime || 0;
+      }
+    }
   }, []);
 
   // Initialize YouTube Iframe Player API
@@ -269,9 +299,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const nextSong = queue[nextIndex];
       const remainingQueue = queue.filter((_, idx) => idx !== nextIndex);
       setQueue(remainingQueue);
-      if (currentSong) {
-        setHistory((prev) => [currentSong, ...prev.slice(0, 19)]);
-      }
       playSongInternal(nextSong);
     } else if (repeatMode === 'all' && history.length > 0) {
       const songs = [...history.reverse(), currentSong].filter(Boolean) as Song[];
@@ -292,9 +319,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (history.length > 0) {
-      const prevSong = history[0];
-      setHistory((prev) => prev.slice(1));
+    if (history.length > 1) {
+      const prevSong = history[1];
       if (currentSong) {
         setQueue((prev) => [currentSong, ...prev]);
       }
@@ -326,14 +352,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   // Internal play dispatcher: handles YouTube or HTML5
   const playSongInternal = (song: Song) => {
-    setCurrentSong(song);
+    const songWithTime: Song = {
+      ...song,
+      playedAt: new Date().toISOString(),
+    };
+    setCurrentSong(songWithTime);
     setCurrentTime(0);
-    setDuration(song.duration || 210);
-    addRecentlyPlayed(song);
+    setDuration(songWithTime.duration || 210);
+    addRecentlyPlayed(songWithTime);
+    setHistory((prev) => {
+      const filtered = prev.filter((s) => s.id !== song.id);
+      return [songWithTime, ...filtered].slice(0, 50);
+    });
+    saveStoredLastPlayed(songWithTime, 0);
     userWantsPlayingRef.current = true;
     silentAudioRef.current?.play().catch(() => {});
 
-    if (song.youtubeId) {
+    if (songWithTime.youtubeId) {
       // Pause HTML5 audio
       if (audioRef.current) {
         audioRef.current.pause();
@@ -341,7 +376,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
         try {
-          ytPlayerRef.current.loadVideoById(song.youtubeId);
+          ytPlayerRef.current.loadVideoById(songWithTime.youtubeId);
           ytPlayerRef.current.playVideo();
           setIsPlaying(true);
         } catch (e) {
@@ -351,7 +386,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         // If YT API not ready yet, retry in 800ms
         setTimeout(() => {
           if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
-            ytPlayerRef.current.loadVideoById(song.youtubeId);
+            ytPlayerRef.current.loadVideoById(songWithTime.youtubeId);
             ytPlayerRef.current.playVideo();
             setIsPlaying(true);
           }
@@ -366,8 +401,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
 
       const audio = audioRef.current;
-      if (audio && song.audioUrl) {
-        audio.src = song.audioUrl;
+      if (audio && songWithTime.audioUrl) {
+        audio.src = songWithTime.audioUrl;
         audio.playbackRate = playbackRate;
         audio.play().then(() => {
           setIsPlaying(true);
@@ -379,9 +414,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const playSong = (song: Song, newQueue?: Song[]) => {
-    if (currentSong) {
-      setHistory((prev) => [currentSong, ...prev.slice(0, 19)]);
-    }
     if (newQueue) {
       const filteredQueue = newQueue.filter((s) => s.id !== song.id);
       setQueue(filteredQueue);
@@ -399,6 +431,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         audioRef.current?.pause();
       }
       setIsPlaying(false);
+      if (currentSong) {
+        saveStoredLastPlayed(currentSong, currentTime);
+      }
     } else {
       userWantsPlayingRef.current = true;
       silentAudioRef.current?.play().catch(() => {});
@@ -426,6 +461,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       audioRef.current?.pause();
     }
     setIsPlaying(false);
+    if (currentSong) {
+      saveStoredLastPlayed(currentSong, currentTime);
+    }
   };
 
   const resumeSong = () => {
@@ -447,6 +485,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     } else if (audioRef.current) {
       audioRef.current.currentTime = time;
+    }
+    if (currentSong) {
+      saveStoredLastPlayed(currentSong, time);
     }
   };
 
@@ -509,6 +550,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const clearQueue = () => {
     setQueue([]);
   };
+
+  const clearHistory = useCallback(() => {
+    clearStoredRecentlyPlayed();
+    setHistory([]);
+  }, []);
+
+  const removeFromHistory = useCallback((songId: string) => {
+    removeRecentlyPlayedItem(songId);
+    setHistory((prev) => prev.filter((s) => s.id !== songId));
+  }, []);
 
   const setPlaybackRate = (rate: number) => {
     setPlaybackRateState(rate);
@@ -578,6 +629,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         addToQueue,
         removeFromQueue,
         clearQueue,
+        clearHistory,
+        removeFromHistory,
         setPlaybackRate,
         setIsNowPlayingOpen,
         setIsLyricsOpen,

@@ -14,6 +14,7 @@ export interface Song {
   source?: 'curated' | 'audius' | 'youtube' | 'itunes' | 'local';
   isFullTrack?: boolean;
   youtubeId?: string;
+  playedAt?: string;
 }
 
 export interface Playlist {

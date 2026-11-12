@@ -11,7 +11,9 @@ import {
   RefreshCw,
   Download,
   Menu,
+  History,
 } from 'lucide-react';
+import Link from 'next/link';
 import Image from 'next/image';
 
 interface TopHeaderProps {
@@ -83,6 +85,14 @@ export function TopHeader({ onOpenAuthModal }: TopHeaderProps) {
                 <p className="font-bold text-white truncate">{currentUser.name}</p>
                 <p className="text-[11px] text-zinc-400 truncate">{currentUser.email}</p>
               </div>
+
+              <Link
+                href="/history"
+                className="w-full text-left px-3 py-2.5 hover:bg-white/10 flex items-center gap-2.5 transition-colors"
+              >
+                <History className="w-4 h-4 text-cyan-400" />
+                <span>Lịch sử nghe nhạc</span>
+              </Link>
 
               <button
                 onClick={onOpenAuthModal}

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useLibrary } from '@/context/LibraryContext';
+import { useAudio } from '@/context/AudioContext';
 import { PlaylistCard } from '@/components/cards/PlaylistCard';
 import { SongRow } from '@/components/cards/SongRow';
 import {
@@ -12,12 +13,15 @@ import {
   DownloadCloud,
   ListMusic,
   Music,
+  History,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LibraryPage() {
   const { playlists, offlineSongs, uploadedSongs, likedSongIds } = useLibrary();
-  const [activeTab, setActiveTab] = useState<'all' | 'playlists' | 'offline' | 'uploaded'>('all');
+  const { history, clearHistory, removeFromHistory } = useAudio();
+  const [activeTab, setActiveTab] = useState<'all' | 'playlists' | 'offline' | 'uploaded' | 'history'>('all');
 
   return (
     <div className="px-4 md:px-8 py-6 space-y-6">
@@ -38,6 +42,13 @@ export default function LibraryPage() {
         {/* Quick action buttons */}
         <div className="flex items-center gap-2">
           <Link
+            href="/history"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-600 to-teal-600 text-white text-xs font-bold hover:scale-105 transition-transform"
+          >
+            <History className="w-4 h-4" />
+            <span>Lịch Sử ({history.length})</span>
+          </Link>
+          <Link
             href="/liked"
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold hover:scale-105 transition-transform"
           >
@@ -55,10 +66,10 @@ export default function LibraryPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+      <div className="flex items-center gap-2 border-b border-zinc-800 pb-3 overflow-x-auto">
         <button
           onClick={() => setActiveTab('all')}
-          className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
             activeTab === 'all'
               ? 'bg-white text-black'
               : 'bg-zinc-800/80 text-zinc-300 hover:text-white hover:bg-zinc-800'
@@ -67,8 +78,18 @@ export default function LibraryPage() {
           Tất Cả
         </button>
         <button
+          onClick={() => setActiveTab('history')}
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === 'history'
+              ? 'bg-white text-black'
+              : 'bg-zinc-800/80 text-zinc-300 hover:text-white hover:bg-zinc-800'
+          }`}
+        >
+          Lịch Sử ({history.length})
+        </button>
+        <button
           onClick={() => setActiveTab('playlists')}
-          className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
             activeTab === 'playlists'
               ? 'bg-white text-black'
               : 'bg-zinc-800/80 text-zinc-300 hover:text-white hover:bg-zinc-800'
@@ -78,7 +99,7 @@ export default function LibraryPage() {
         </button>
         <button
           onClick={() => setActiveTab('offline')}
-          className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
             activeTab === 'offline'
               ? 'bg-white text-black'
               : 'bg-zinc-800/80 text-zinc-300 hover:text-white hover:bg-zinc-800'
@@ -88,7 +109,7 @@ export default function LibraryPage() {
         </button>
         <button
           onClick={() => setActiveTab('uploaded')}
-          className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
             activeTab === 'uploaded'
               ? 'bg-white text-black'
               : 'bg-zinc-800/80 text-zinc-300 hover:text-white hover:bg-zinc-800'
@@ -168,6 +189,56 @@ export default function LibraryPage() {
                   song={song}
                   index={idx}
                   playlistContext={uploadedSongs}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* TAB CONTENT: History */}
+      {activeTab === 'history' && (
+        <section className="space-y-4 pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-cyan-400" />
+                Lịch Sử Nghe Nhạc ({history.length})
+              </h2>
+              <p className="text-xs text-zinc-400">Các bài hát được phát gần đây trên SoundWave</p>
+            </div>
+            {history.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/history"
+                  className="text-xs text-cyan-400 hover:underline font-semibold"
+                >
+                  Xem trang đầy đủ
+                </Link>
+                <button
+                  onClick={clearHistory}
+                  className="px-3 py-1 rounded-full text-xs text-zinc-400 hover:text-red-400 hover:bg-red-500/10 flex items-center gap-1 transition-colors border border-zinc-800"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa lịch sử</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {history.length === 0 ? (
+            <div className="p-8 text-center bg-zinc-900/40 rounded-xl border border-zinc-800/60 text-zinc-400 text-xs">
+              Chưa có bài hát nào trong lịch sử phát. Hãy chọn một bài hát để bắt đầu!
+            </div>
+          ) : (
+            <div className="bg-black/20 rounded-xl p-2 md:p-3 border border-white/5 space-y-1">
+              {history.map((song, idx) => (
+                <SongRow
+                  key={`history-${song.id}-${song.playedAt || idx}`}
+                  song={song}
+                  index={idx}
+                  playlistContext={history}
+                  onRemove={() => removeFromHistory(song.id)}
                 />
               ))}
             </div>

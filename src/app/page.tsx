@@ -6,13 +6,14 @@ import { useLibrary } from '@/context/LibraryContext';
 import { useAudio } from '@/context/AudioContext';
 import { PlaylistCard } from '@/components/cards/PlaylistCard';
 import { SongRow } from '@/components/cards/SongRow';
-import { Heart, Play, Pause, Sparkles, Flame, Headphones, Clock } from 'lucide-react';
+import { Heart, Play, Pause, Sparkles, Flame, Headphones, Clock, History, ArrowRight } from 'lucide-react';
 import { SafeImage as Image } from '@/components/ui/SafeImage';
+import { formatRelativeTime } from '@/utils/format';
 import Link from 'next/link';
 
 export default function HomePage() {
   const { playlists, likedSongIds } = useLibrary();
-  const { currentSong, isPlaying, playSong, togglePlay } = useAudio();
+  const { currentSong, isPlaying, playSong, togglePlay, history } = useAudio();
   const [greeting, setGreeting] = useState('Xin chào');
 
   useEffect(() => {
@@ -110,6 +111,81 @@ export default function HomePage() {
             );
           })}
         </div>
+
+        {/* Section: Đã Nghe Gần Đây (Recently Played) */}
+        {history.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                  <History className="w-5 h-5 text-cyan-400" />
+                  Đã Nghe Gần Đây
+                </h2>
+                <p className="text-xs text-zinc-400">Tiếp tục thưởng thức các bài hát vừa nghe</p>
+              </div>
+              <Link
+                href="/history"
+                className="text-xs font-bold text-zinc-400 hover:text-white hover:underline flex items-center gap-1"
+              >
+                <span>Xem tất cả ({history.length})</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {history.slice(0, 6).map((song) => {
+                const isThisPlaying = currentSong?.id === song.id && isPlaying;
+                return (
+                  <div
+                    key={`${song.id}-${song.playedAt || ''}`}
+                    onClick={() => {
+                      if (isThisPlaying) togglePlay();
+                      else playSong(song, history);
+                    }}
+                    className="group relative p-3 rounded-lg bg-zinc-900/60 hover:bg-zinc-800/80 border border-white/5 transition-all duration-200 cursor-pointer"
+                  >
+                    <div className="relative aspect-square w-full rounded-md overflow-hidden bg-zinc-800 mb-2.5 shadow-md">
+                      <Image
+                        src={song.coverUrl}
+                        alt={song.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isThisPlaying) togglePlay();
+                          else playSong(song, history);
+                        }}
+                        className={`absolute right-2 bottom-2 w-9 h-9 rounded-full bg-[#1ed760] text-black flex items-center justify-center shadow-xl transition-all ${
+                          isThisPlaying
+                            ? 'opacity-100 scale-100'
+                            : 'opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 scale-95 group-hover:scale-100'
+                        } hover:scale-105 active:scale-95`}
+                      >
+                        {isThisPlaying ? (
+                          <Pause className="w-4 h-4 fill-black" />
+                        ) : (
+                          <Play className="w-4 h-4 fill-black ml-0.5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className={`font-semibold text-xs truncate ${isThisPlaying ? 'text-[#1ed760]' : 'text-white'}`}>
+                      {song.title}
+                    </p>
+                    <p className="text-[11px] text-zinc-400 truncate mt-0.5">{song.artist}</p>
+                    {song.playedAt && (
+                      <p className="text-[10px] text-zinc-500 truncate mt-1 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" />
+                        {formatRelativeTime(song.playedAt)}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Section: Tuyển Chọn Cho Bạn */}
         <section className="space-y-4">

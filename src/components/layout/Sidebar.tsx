@@ -14,6 +14,7 @@ import {
   Upload,
   Music,
   Trash2,
+  History,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -117,6 +118,18 @@ export function Sidebar({ onOpenCreatePlaylist, onOpenUploadSong }: SidebarProps
               <DownloadCloud className="w-3.5 h-3.5" />
             </div>
             <span>Nhạc Đã Tải Về</span>
+          </Link>
+
+          <Link
+            href="/history"
+            className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-white/5 text-xs font-semibold transition-colors ${
+              pathname === '/history' ? 'bg-white/10 text-white' : 'text-zinc-300 hover:text-white'
+            }`}
+          >
+            <div className="w-6 h-6 rounded bg-gradient-to-br from-cyan-600 to-teal-500 flex items-center justify-center text-white">
+              <History className="w-3.5 h-3.5" />
+            </div>
+            <span>Lịch Sử Nghe</span>
           </Link>
 
           <button

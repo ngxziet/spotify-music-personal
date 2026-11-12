@@ -269,11 +269,59 @@ export function addRecentlyPlayed(song: Song) {
   try {
     const current = getStoredRecentlyPlayed();
     const filtered = current.filter(s => s.id !== song.id);
-    const updated = [song, ...filtered].slice(0, 20); // Keep last 20
+    const songWithTime: Song = {
+      ...song,
+      playedAt: new Date().toISOString()
+    };
+    const updated = [songWithTime, ...filtered].slice(0, 50); // Keep last 50
     localStorage.setItem(STORAGE_RECENTLY_PLAYED, JSON.stringify(updated));
   } catch (err) {
     console.error('Failed to store recently played:', err);
   }
+}
+
+export function clearStoredRecentlyPlayed() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(STORAGE_RECENTLY_PLAYED);
+  } catch (err) {
+    console.error('Failed to clear recently played:', err);
+  }
+}
+
+export function removeRecentlyPlayedItem(songId: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = getStoredRecentlyPlayed();
+    const filtered = current.filter(s => s.id !== songId);
+    localStorage.setItem(STORAGE_RECENTLY_PLAYED, JSON.stringify(filtered));
+  } catch (err) {
+    console.error('Failed to remove history item:', err);
+  }
+}
+
+const STORAGE_LAST_PLAYED = 'soundwave_last_played_state';
+
+export interface StoredPlaybackState {
+  song: Song;
+  currentTime?: number;
+}
+
+export function getStoredLastPlayed(): StoredPlaybackState | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_LAST_PLAYED);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveStoredLastPlayed(song: Song, currentTime: number = 0) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_LAST_PLAYED, JSON.stringify({ song, currentTime }));
+  } catch {}
 }
 
 export const DEFAULT_USER: UserProfile = {
