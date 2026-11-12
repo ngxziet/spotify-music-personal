@@ -237,10 +237,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     const newUser: UserProfile = {
       id: generateId('user'),
       name: name || 'Người dùng mới',
-      email: email || `${Date.now()}@spotify.local`,
+      email: email || `${Date.now()}@soundwave.local`,
       avatar: avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
       bio: 'Người yêu âm nhạc 🎶',
-      plan: 'Premium VIP',
       createdAt: new Date().toISOString()
     };
 

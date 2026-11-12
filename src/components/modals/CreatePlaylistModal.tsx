@@ -17,7 +17,7 @@ const PRESET_COVERS = [
   'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=800&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1520523839898-507127045c47?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1552422535-c45813c61732?w=800&auto=format&fit=crop&q=80',
 ];
 
 export function CreatePlaylistModal({ isOpen, onClose, onSuccess }: CreatePlaylistModalProps) {

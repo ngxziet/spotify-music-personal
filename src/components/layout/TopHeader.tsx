@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
-  ShieldCheck,
   Settings,
   RefreshCw,
   Download,
@@ -61,11 +60,6 @@ export function TopHeader({ onOpenAuthModal }: TopHeaderProps) {
 
       {/* Right: User Profile & Actions */}
       <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 border border-zinc-700/60 text-xs font-medium text-zinc-300">
-          <ShieldCheck className="w-4 h-4 text-[#1ed760]" />
-          <span>{currentUser.plan}</span>
-        </div>
-
         {/* User Pill Dropdown */}
         <div className="relative">
           <button

@@ -3,7 +3,7 @@
 import React from 'react';
 import { useAudio } from '@/context/AudioContext';
 import { X, Mic2, Disc } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage as Image } from '@/components/ui/SafeImage';
 
 export function LyricsModal() {
   const { currentSong, isLyricsOpen, setIsLyricsOpen, currentTime } = useAudio();

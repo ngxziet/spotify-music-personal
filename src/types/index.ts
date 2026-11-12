@@ -11,7 +11,8 @@ export interface Song {
   isLocal?: boolean;
   isDownloaded?: boolean;
   downloadedAt?: string;
-  source?: 'curated' | 'itunes' | 'local';
+  source?: 'curated' | 'audius' | 'itunes' | 'local';
+  isFullTrack?: boolean;
 }
 
 export interface Playlist {
@@ -35,7 +36,6 @@ export interface UserProfile {
   email: string;
   avatar: string;
   bio?: string;
-  plan: 'Free' | 'Premium VIP';
   createdAt: string;
 }
 

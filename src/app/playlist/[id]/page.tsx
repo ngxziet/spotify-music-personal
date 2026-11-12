@@ -16,7 +16,7 @@ import {
   Check,
   PlusCircle,
 } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage as Image } from '@/components/ui/SafeImage';
 import Link from 'next/link';
 
 export default function PlaylistDetailPage({ params }: { params: Promise<{ id: string }> }) {

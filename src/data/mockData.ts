@@ -73,7 +73,7 @@ export const CURATED_SONGS: Song[] = [
     album: 'Solitude in Minor',
     duration: 353,
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
-    coverUrl: 'https://images.unsplash.com/photo-1520523839898-507127045c47?w=800&auto=format&fit=crop&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1552422535-c45813c61732?w=800&auto=format&fit=crop&q=80',
     category: 'Classical & Piano',
     lyrics: `[00:00.00] Keys dancing beneath gentle fingers
 [00:30.00] A memory that softly lingers
@@ -152,7 +152,7 @@ export const CURATED_PLAYLISTS: Playlist[] = [
     id: 'playlist-peaceful-piano',
     title: 'Piano Tĩnh Lặng',
     description: 'Thanh âm dương cầm sâu lắng, êm dịu đưa bạn vào giấc ngủ ngon.',
-    coverUrl: 'https://images.unsplash.com/photo-1520523839898-507127045c47?w=800&auto=format&fit=crop&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1552422535-c45813c61732?w=800&auto=format&fit=crop&q=80',
     songs: [CURATED_SONGS[4], CURATED_SONGS[7]],
     createdAt: '2026-01-03',
     isCustom: false

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useLibrary } from '@/context/LibraryContext';
-import { X, User, UserPlus, Check, Download, Upload, ShieldCheck } from 'lucide-react';
+import { X, User, UserPlus, Check, Download, Upload } from 'lucide-react';
 import Image from 'next/image';
 
 interface AuthModalProps {
@@ -157,12 +157,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <Image src={avatar} alt="Avatar" fill className="object-cover" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                  <h3 className="font-bold text-lg text-white">
                     {currentUser.name}
-                    <span className="px-2 py-0.5 rounded text-[10px] bg-[#1ed760]/20 text-[#1ed760] border border-[#1ed760]/40 flex items-center gap-1 font-normal">
-                      <ShieldCheck className="w-3 h-3" />
-                      {currentUser.plan}
-                    </span>
                   </h3>
                   <p className="text-xs text-zinc-400">{currentUser.email}</p>
                 </div>

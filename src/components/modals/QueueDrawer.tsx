@@ -3,7 +3,7 @@
 import React from 'react';
 import { useAudio } from '@/context/AudioContext';
 import { X, ListMusic, Trash2, Play, Disc } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage as Image } from '@/components/ui/SafeImage';
 
 export function QueueDrawer() {
   const { currentSong, queue, isQueueOpen, setIsQueueOpen, removeFromQueue, clearQueue, playSong } = useAudio();

@@ -6,7 +6,7 @@ import { Song } from '@/types';
 import { CURATED_SONGS, GENRES } from '@/data/mockData';
 import { SongRow } from '@/components/cards/SongRow';
 import { useAudio } from '@/context/AudioContext';
-import Image from 'next/image';
+import { SafeImage as Image } from '@/components/ui/SafeImage';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');

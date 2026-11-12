@@ -7,7 +7,7 @@ import { useAudio } from '@/context/AudioContext';
 import { PlaylistCard } from '@/components/cards/PlaylistCard';
 import { SongRow } from '@/components/cards/SongRow';
 import { Heart, Play, Pause, Sparkles, Flame, Headphones, Clock } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage as Image } from '@/components/ui/SafeImage';
 import Link from 'next/link';
 
 export default function HomePage() {

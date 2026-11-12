@@ -22,7 +22,7 @@ import {
   Check,
   Disc,
 } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage as Image } from '@/components/ui/SafeImage';
 
 interface PersistentPlayerProps {
   onOpenSleepTimer?: () => void;

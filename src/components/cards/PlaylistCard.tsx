@@ -4,7 +4,7 @@ import React from 'react';
 import { Playlist } from '@/types';
 import { useAudio } from '@/context/AudioContext';
 import { Play, Pause } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage as Image } from '@/components/ui/SafeImage';
 import Link from 'next/link';
 
 interface PlaylistCardProps {

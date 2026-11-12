@@ -6,7 +6,7 @@ import { useAudio } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
 import { formatTime } from '@/utils/format';
 import { Play, Pause, Heart, Download, Plus, Check, Trash2, Music2 } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage as Image } from '@/components/ui/SafeImage';
 
 interface SongRowProps {
   song: Song;
@@ -97,13 +97,18 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
           <p className="text-xs text-zinc-400 truncate">
             {song.artist}
             {song.isLocal && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-zinc-700 text-zinc-300">
+              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-zinc-700 text-zinc-300 font-medium">
                 Local MP3
               </span>
             )}
             {song.source === 'itunes' && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300">
-                Online
+              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-medium" title="Bản nghe thử 30s từ Apple iTunes">
+                Preview 30s
+              </span>
+            )}
+            {(song.source === 'audius' || song.source === 'curated' || song.isFullTrack) && !song.isLocal && (
+              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-[#1ed760]/20 text-[#1ed760] font-medium" title="Bản nhạc đầy đủ">
+                Full Track
               </span>
             )}
           </p>
