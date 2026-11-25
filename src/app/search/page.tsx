@@ -2,7 +2,7 @@
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search as SearchIcon, X, Music, Loader2, Play, ExternalLink } from 'lucide-react';
+import { Search as SearchIcon, X, Music, Loader2, Play } from 'lucide-react';
 import { Song } from '@/types';
 import { CURATED_SONGS, GENRES } from '@/data/mockData';
 import { SongRow } from '@/components/cards/SongRow';
@@ -33,9 +33,6 @@ function SearchContent({ initialQuery }: { initialQuery: string }) {
   const { offlineSongs, uploadedSongs } = useLibrary();
   const searchTerm = query.trim();
   const catalogQuery = searchTerm || (selectedGenre === 'all' ? '' : selectedGenre === 'vpop' ? 'V-Pop' : selectedGenre);
-  const spotifyUrl = catalogQuery
-    ? `https://open.spotify.com/search/${encodeURIComponent(catalogQuery)}`
-    : 'https://open.spotify.com/';
   const requestUrl = catalogQuery ? '/api/search?q=' + encodeURIComponent(catalogQuery) : '/api/search';
   const activeResult = searchResult?.url === requestUrl ? searchResult : null;
   const isLoading = !activeResult;
@@ -115,14 +112,6 @@ function SearchContent({ initialQuery }: { initialQuery: string }) {
       <p className="text-xs text-zinc-300">
         Tìm bản đầy đủ từ Audius, Openverse, Internet Archive và thư viện trên máy.
       </p>
-
-      <a
-        href={spotifyUrl}
-        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/20 px-3 text-xs font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1ed760]"
-      >
-        {catalogQuery ? 'Tìm trên Spotify' : 'Mở Spotify'}
-        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-      </a>
 
       {/* Genre Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
