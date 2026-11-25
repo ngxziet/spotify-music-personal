@@ -36,6 +36,15 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Android build output and local signing material
+/android/.gradle/
+/android/**/build/
+/android/local.properties
+/android/.idea/
+*.jks
+*.keystore
+*.p12
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

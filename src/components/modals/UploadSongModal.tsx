@@ -74,23 +74,23 @@ export function UploadSongModal({ isOpen, onClose }: UploadSongModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-lg bg-[#282828] text-white rounded-xl shadow-2xl p-6 border border-zinc-700/60"
+        className="relative w-full max-w-lg bg-[#282828] text-white rounded-xl shadow-2xl p-4 sm:p-6 border border-zinc-700/60 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-          <UploadCloud className="w-6 h-6 text-[#1ed760]" />
+        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
+          <UploadCloud className="w-5 h-5 sm:w-6 sm:h-6 text-[#1ed760]" />
           Tải Nhạc Của Bạn Lên
         </h2>
-        <p className="text-xs text-zinc-400 mb-6">
+        <p className="text-xs text-zinc-400 mb-4 sm:mb-6">
           File nhạc MP3 của bạn sẽ được lưu trực tiếp vào cơ sở dữ liệu trình duyệt (IndexedDB), giúp bạn nghe offline mọi lúc mà không tốn dung lượng máy chủ.
         </p>
 

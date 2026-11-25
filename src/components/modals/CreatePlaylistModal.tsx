@@ -42,30 +42,30 @@ export function CreatePlaylistModal({ isOpen, onClose, onSuccess }: CreatePlayli
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-lg bg-[#282828] text-white rounded-xl shadow-2xl p-6 border border-zinc-700/60"
+        className="relative w-full max-w-lg bg-[#282828] text-white rounded-xl shadow-2xl p-4 sm:p-6 border border-zinc-700/60 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Music className="w-6 h-6 text-[#1ed760]" />
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-2">
+          <Music className="w-5 h-5 sm:w-6 sm:h-6 text-[#1ed760]" />
           Tạo Playlist Mới
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex gap-4 items-start">
-            <div className="relative w-32 h-32 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0 border border-zinc-700">
+          <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0 border border-zinc-700 mx-auto sm:mx-0">
               <Image src={coverUrl} alt="Cover preview" fill className="object-cover" />
             </div>
 
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 space-y-3 w-full">
               <div>
                 <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1">
                   Tên Playlist *
@@ -100,7 +100,7 @@ export function CreatePlaylistModal({ isOpen, onClose, onSuccess }: CreatePlayli
               <ImageIcon className="w-3.5 h-3.5 text-zinc-400" />
               Chọn Ảnh Bìa Tuyển Chọn
             </label>
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-3 xs:grid-cols-6 gap-2">
               {PRESET_COVERS.map((url, idx) => (
                 <button
                   type="button"

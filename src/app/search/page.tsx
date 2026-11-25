@@ -64,23 +64,23 @@ export default function SearchPage() {
   const topResult = results[0];
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-6">
+    <div className="px-3 sm:px-6 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Search Input Box */}
       <div className="max-w-xl">
         <div className="relative flex items-center">
-          <SearchIcon className="absolute left-4 w-5 h-5 text-zinc-400 pointer-events-none" />
+          <SearchIcon className="absolute left-3.5 sm:left-4 w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Bạn muốn nghe bài hát, nghệ sĩ hoặc thể loại gì?"
-            className="w-full pl-12 pr-10 py-3 bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-white text-sm rounded-full border border-transparent focus:border-zinc-500 focus:outline-none transition-all placeholder-zinc-400 shadow-inner"
+            className="w-full pl-10 sm:pl-12 pr-10 py-2.5 sm:py-3 bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-white text-xs sm:text-sm rounded-full border border-transparent focus:border-zinc-500 focus:outline-none transition-all placeholder-zinc-400 shadow-inner"
             autoFocus
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-3.5 p-1 text-zinc-400 hover:text-white rounded-full transition-colors"
+              className="absolute right-3 p-1 text-zinc-400 hover:text-white rounded-full transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -153,14 +153,15 @@ export default function SearchPage() {
                     {topResult.title}
                   </h4>
                   <p className="text-sm text-zinc-400">
-                    <span className="font-semibold text-zinc-200">{topResult.artist}</span> • Bài hát
+                    <span className="font-semibold text-zinc-200">{topResult.artist}</span> • {topResult.youtubeId ? 'YouTube' : 'Bài hát'}
                   </p>
                 </div>
 
                 <button
                   onClick={() => playSong(topResult, results)}
-                  className="absolute bottom-5 right-5 w-12 h-12 rounded-full bg-[#1ed760] text-black flex items-center justify-center shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all hover:scale-105"
+                  className="absolute bottom-5 right-5 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#1ed760] text-black flex items-center justify-center shadow-xl opacity-100 sm:opacity-0 translate-y-0 sm:translate-y-2 sm:group-hover:opacity-100 sm:group-hover:translate-y-0 transition-all hover:scale-105 active:scale-95"
                   title="Phát bài hát"
+                  aria-label="Phát kết quả hàng đầu"
                 >
                   <Play className="w-5 h-5 fill-black ml-0.5" />
                 </button>

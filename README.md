@@ -82,4 +82,12 @@ git add .
 git commit -m "update new features"
 git push origin master
 ```
-Vercel sẽ tự động phát hiện, kích hoạt quy trình build và cập nhật phiên bản mới nhất lên production trong vòng chưa đầy 30 giây!
+Vercel tự build và cập nhật bản production sau khi nhận thay đổi trên nhánh `master`.
+
+## SoundWave cho Android
+
+- Tải `SoundWave.apk` từ [GitHub Releases](https://github.com/ngxziet/spotify-music-personal/releases/latest). Mở file trên Android và cho phép ứng dụng đang mở file cài APK nếu máy hỏi.
+- Android Media3 quản lý nhạc MP3, nguồn phát trực tiếp và các bài đã tải để chúng có thể tiếp tục phát và chuyển bài khi khóa màn hình. Các bài nhúng YouTube tạm dừng khi rời ứng dụng.
+- Giao diện và API dùng bản production trên Vercel. App nhận giao diện mới khi mở lại hoặc khi phát hiện bản mới trong lúc đang rảnh và có mạng. Lần mở đầu tiên cần kết nối mạng.
+- Khi có thay đổi trong `android/` trên nhánh `master`, [GitHub Actions](https://github.com/ngxziet/spotify-music-personal/actions/workflows/android.yml) ký và đăng APK mới. Bản APK mới cài đè bằng cùng chữ ký để giữ thư viện trên máy. Android yêu cầu xác nhận cài APK mới.
+- Workflow dùng hai GitHub Secrets `SOUNDWAVE_KEYSTORE_BASE64` và `SOUNDWAVE_KEYSTORE_PASSWORD`. Giữ bản sao riêng của khóa ký để có thể phát hành bản cập nhật về sau.

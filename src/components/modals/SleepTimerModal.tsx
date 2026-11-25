@@ -57,23 +57,23 @@ export function SleepTimerModal({ isOpen, onClose }: SleepTimerModalProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-sm bg-[#282828] text-white rounded-xl shadow-2xl p-6 border border-zinc-700/60"
+        className="relative w-full max-w-sm bg-[#282828] text-white rounded-xl shadow-2xl p-4 sm:p-6 border border-zinc-700/60 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+        <h3 className="text-lg sm:text-xl font-bold mb-1.5 sm:mb-2 flex items-center gap-2">
           <Clock className="w-5 h-5 text-[#1ed760]" />
           Hẹn Giờ Tắt Nhạc
         </h3>
-        <p className="text-xs text-zinc-400 mb-5">
+        <p className="text-xs text-zinc-400 mb-4 sm:mb-5">
           Tự động tạm dừng phát nhạc khi bạn ngủ hoặc làm việc.
         </p>
 

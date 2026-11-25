@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAudio } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
+import { usePwa } from '@/context/PwaContext';
 import { formatTime } from '@/utils/format';
 import {
   Play,
@@ -55,24 +56,33 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
     setIsNowPlayingOpen,
   } = useAudio();
 
-  const { isSongLiked, toggleLikeSong, downloadSong } = useLibrary();
+  const { isSongLiked, isSongOffline, toggleLikeSong, downloadSong } = useLibrary();
+  const { showToast } = usePwa();
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   if (!currentSong) return null;
 
   const isLiked = isSongLiked(currentSong.id);
+  const isOfflineReady = isSongOffline(currentSong.id) || !!currentSong.isLocal || !!currentSong.isDownloaded;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const volumePercent = (volume || 0) * 100;
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (currentSong.youtubeId && !currentSong.audioUrl) {
+      showToast('Nhạc từ YouTube chỉ phát trực tuyến. Hãy chọn bài Full Track (Curated/Audius) để tải offline.', 'warning');
+      return;
+    }
     setIsDownloading(true);
     const ok = await downloadSong(currentSong, true);
     setIsDownloading(false);
     if (ok) {
       setDownloadSuccess(true);
+      showToast(`Đã lưu "${currentSong.title}" để nghe Offline!`, 'success');
       setTimeout(() => setDownloadSuccess(false), 2000);
+    } else {
+      showToast('Không thể tải bài hát này lúc này.', 'warning');
     }
   };
 
@@ -86,10 +96,10 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
 
   return (
     <>
-      {/* MOBILE MINI PLAYER (fixed above bottom navigation bar) */}
+      {/* MOBILE MINI PLAYER (fixed right above bottom navigation bar, respecting safe area) */}
       <div
         onClick={() => setIsNowPlayingOpen(true)}
-        className="md:hidden fixed bottom-14 left-2 right-2 z-40 bg-[#282828]/95 backdrop-blur-md rounded-lg shadow-2xl p-2.5 flex items-center justify-between cursor-pointer border border-white/10"
+        className="md:hidden fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] left-[max(0.5rem,env(safe-area-inset-left,0px))] right-[max(0.5rem,env(safe-area-inset-right,0px))] z-40 bg-[#282828]/95 backdrop-blur-md rounded-lg shadow-2xl p-2.5 flex items-center justify-between cursor-pointer border border-white/10 active:scale-[0.99] transition-transform"
       >
         {/* Top Progress Line */}
         <div className="absolute top-0 left-2 right-2 h-0.5 bg-zinc-700 rounded-full overflow-hidden">
@@ -99,7 +109,7 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
           />
         </div>
 
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
           <div className="relative w-10 h-10 rounded overflow-hidden bg-zinc-800 flex-shrink-0">
             <Image src={currentSong.coverUrl} alt="Cover" fill className="object-cover" />
           </div>
@@ -109,10 +119,11 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => toggleLikeSong(currentSong)}
-            className="p-1.5 text-zinc-400 hover:text-white"
+            className="p-2 text-zinc-400 hover:text-white active:scale-90 transition-transform"
+            aria-label={isLiked ? 'Bỏ thích' : 'Yêu thích'}
           >
             <Heart
               className={`w-4 h-4 ${isLiked ? 'fill-[#1ed760] text-[#1ed760]' : ''}`}
@@ -120,7 +131,8 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
           </button>
           <button
             onClick={togglePlay}
-            className="p-2 rounded-full bg-white text-black hover:scale-105 transition-transform"
+            className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-90 transition-transform shadow-md"
+            aria-label={isPlaying ? 'Tạm dừng' : 'Phát'}
           >
             {isPlaying ? (
               <Pause className="w-4 h-4 fill-black" />
@@ -132,9 +144,9 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
       </div>
 
       {/* DESKTOP STICKY PLAYER */}
-      <footer className="hidden md:flex fixed bottom-0 left-0 right-0 h-20 bg-[#181818] border-t border-zinc-800/80 px-4 items-center justify-between z-40 text-white select-none">
+      <footer className="hidden md:flex fixed bottom-0 left-0 right-0 h-20 bg-[#181818]/95 backdrop-blur-md border-t border-zinc-800/80 px-4 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] items-center justify-between z-40 text-white select-none">
         {/* Left: Song Info & Quick Actions */}
-        <div className="flex items-center gap-3 w-[30%] min-w-[180px]">
+        <div className="flex items-center gap-3 w-[28%] min-w-[150px] max-w-[280px]">
           <div
             onClick={() => setIsNowPlayingOpen(true)}
             className="relative w-14 h-14 rounded overflow-hidden bg-zinc-800 flex-shrink-0 cursor-pointer shadow group"
@@ -172,10 +184,12 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
             <button
               onClick={handleDownload}
               disabled={isDownloading}
-              className="p-2 rounded-full text-zinc-400 hover:text-white hover:scale-110 transition-transform"
-              title="Tải MP3 về máy"
+              className={`p-2 rounded-full hover:scale-110 transition-transform ${
+                downloadSuccess || isOfflineReady ? 'text-[#1ed760]' : 'text-zinc-400 hover:text-white'
+              }`}
+              title={isOfflineReady ? 'Đã lưu Offline (Nhấn để tải .mp3)' : 'Tải MP3 về máy & lưu Offline'}
             >
-              {downloadSuccess ? (
+              {downloadSuccess || isOfflineReady ? (
                 <Check className="w-4 h-4 text-[#1ed760]" />
               ) : (
                 <Download
@@ -189,9 +203,9 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
         </div>
 
         {/* Center: Playback Controls & Progress Bar */}
-        <div className="flex flex-col items-center max-w-[42%] w-full">
+        <div className="flex-1 max-w-[480px] flex flex-col items-center px-2">
           {/* Controls Buttons */}
-          <div className="flex items-center gap-5 mb-1.5">
+          <div className="flex items-center gap-3 sm:gap-5 mb-1.5">
             <button
               onClick={toggleShuffle}
               className={`p-1.5 transition-colors ${
@@ -271,7 +285,7 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
         </div>
 
         {/* Right: Secondary Actions (Lyrics, Queue, Volume, Fullscreen) */}
-        <div className="flex items-center justify-end gap-3 w-[30%] min-w-[180px]">
+        <div className="flex items-center justify-end gap-1.5 lg:gap-2.5 w-[28%] min-w-[120px]">
           <button
             onClick={() => setIsLyricsOpen(!isLyricsOpen)}
             className={`p-1.5 transition-colors ${
@@ -299,17 +313,17 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
               const idx = (speeds.indexOf(playbackRate) + 1) % speeds.length;
               setPlaybackRate(speeds[idx]);
             }}
-            className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 hover:text-white"
+            className="hidden lg:block text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 hover:text-white transition-colors"
             title="Tốc độ phát"
           >
             {playbackRate}x
           </button>
 
           {/* Volume Control */}
-          <div className="flex items-center gap-2 group w-28">
+          <div className="flex items-center gap-1.5 group">
             <button
               onClick={toggleMute}
-              className="text-zinc-400 hover:text-white transition-colors"
+              className="text-zinc-400 hover:text-white transition-colors p-1"
               title={isMuted ? 'Bật âm' : 'Tắt âm'}
             >
               {isMuted || volume === 0 ? (
@@ -321,18 +335,20 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
               )}
             </button>
 
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={isMuted ? 0 : volume}
-              onChange={handleVolumeChange}
-              className="w-full h-1 bg-zinc-700 rounded-lg cursor-pointer accent-[#1ed760]"
-              style={{
-                background: `linear-gradient(to right, #1ed760 ${volumePercent}%, #4d4d4d ${volumePercent}%)`,
-              }}
-            />
+            <div className="hidden lg:block w-20 xl:w-28">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="w-full h-1 bg-zinc-700 rounded-lg cursor-pointer accent-[#1ed760]"
+                style={{
+                  background: `linear-gradient(to right, #1ed760 ${volumePercent}%, #4d4d4d ${volumePercent}%)`,
+                }}
+              />
+            </div>
           </div>
 
           <button

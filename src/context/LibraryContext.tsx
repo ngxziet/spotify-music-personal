@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { Song, Playlist, UserProfile } from '@/types';
 import {
+  DEFAULT_USER,
   getStoredPlaylists,
   saveStoredPlaylists,
   getStoredLikedSongIds,
@@ -35,6 +36,7 @@ interface LibraryContextType {
   removeSongFromPlaylist: (playlistId: string, songId: string) => void;
   toggleLikeSong: (song: Song) => void;
   isSongLiked: (songId: string) => boolean;
+  isSongOffline: (songId: string) => boolean;
   downloadSong: (song: Song, directFileDownload?: boolean) => Promise<boolean>;
   deleteOfflineSong: (songId: string) => Promise<boolean>;
   handleUploadSong: (file: File, title: string, artist: string, album?: string) => Promise<Song | null>;
@@ -53,7 +55,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
   const [offlineSongs, setOfflineSongs] = useState<Song[]>([]);
   const [uploadedSongs, setUploadedSongs] = useState<Song[]>([]);
-  const [currentUser, setCurrentUserState] = useState<UserProfile>(() => getStoredUserProfile());
+  const [currentUser, setCurrentUserState] = useState<UserProfile>(DEFAULT_USER);
   const [registeredUsers, setRegisteredUsers] = useState<UserProfile[]>([]);
 
   // Load initial data
@@ -152,6 +154,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     return likedSongIds.includes(songId);
   }, [likedSongIds]);
 
+  const isSongOffline = useCallback((songId: string) => {
+    return offlineSongs.some((s) => s.id === songId);
+  }, [offlineSongs]);
+
   const toggleLikeSong = useCallback((song: Song) => {
     setLikedSongIds(prev => {
       const isAlready = prev.includes(song.id);
@@ -170,13 +176,16 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const downloadSong = useCallback(async (song: Song, directFileDownload: boolean = false): Promise<boolean> => {
-    if (directFileDownload) {
-      await triggerBrowserDownload(song);
+    if (!song.audioUrl || song.audioUrl.trim() === '') {
+      return false;
     }
     const success = await saveSongOffline(song);
     if (success) {
       const updated = await getOfflineSongs();
       setOfflineSongs(updated);
+      if (directFileDownload) {
+        await triggerBrowserDownload(song);
+      }
     }
     return success;
   }, []);
@@ -308,6 +317,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         removeSongFromPlaylist,
         toggleLikeSong,
         isSongLiked,
+        isSongOffline,
         downloadSong,
         deleteOfflineSong,
         handleUploadSong,

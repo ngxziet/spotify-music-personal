@@ -3,6 +3,7 @@
 import React, { use, useState } from 'react';
 import { useLibrary } from '@/context/LibraryContext';
 import { useAudio } from '@/context/AudioContext';
+import { usePwa } from '@/context/PwaContext';
 import { SongRow } from '@/components/cards/SongRow';
 import { formatTime } from '@/utils/format';
 import {
@@ -25,6 +26,7 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
 
   const { playlists, removeSongFromPlaylist, deletePlaylist, downloadSong } = useLibrary();
   const { currentSong, isPlaying, playSong, togglePlay, isShuffle, toggleShuffle } = useAudio();
+  const { showToast } = usePwa();
 
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadAllSuccess, setDownloadAllSuccess] = useState(false);
@@ -62,20 +64,27 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
   const handleDownloadAll = async () => {
     if (playlist.songs.length === 0) return;
     setIsDownloadingAll(true);
+    let savedCount = 0;
     for (const s of playlist.songs) {
-      await downloadSong(s, false);
+      const ok = await downloadSong(s, false);
+      if (ok) savedCount += 1;
     }
     setIsDownloadingAll(false);
-    setDownloadAllSuccess(true);
-    setTimeout(() => setDownloadAllSuccess(false), 2500);
+    if (savedCount > 0) {
+      setDownloadAllSuccess(true);
+      showToast(`Đã lưu ${savedCount}/${playlist.songs.length} bài hát để nghe Offline!`, 'success');
+      setTimeout(() => setDownloadAllSuccess(false), 2500);
+    } else {
+      showToast('Các bài hát trong danh sách này chỉ hỗ trợ phát trực tuyến.', 'warning');
+    }
   };
 
   return (
     <div className="relative min-h-full">
       {/* Dynamic Gradient Top Header */}
-      <div className="relative p-6 md:p-8 bg-gradient-to-b from-emerald-800 via-emerald-950/80 to-[#121212] flex flex-col md:flex-row items-start md:items-end gap-6 shadow-lg">
+      <div className="relative p-4 sm:p-6 md:p-8 bg-gradient-to-b from-emerald-800 via-emerald-950/80 to-[#121212] flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 shadow-lg text-center sm:text-left">
         {/* Cover Art */}
-        <div className="relative w-44 h-44 md:w-56 md:h-56 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0 shadow-2xl border border-white/10">
+        <div className="relative w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0 shadow-2xl border border-white/10 mx-auto sm:mx-0">
           <Image
             src={playlist.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80'}
             alt={playlist.title}
@@ -86,17 +95,17 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
         </div>
 
         {/* Info */}
-        <div className="flex-1 space-y-2 text-white">
-          <span className="text-xs uppercase font-extrabold tracking-widest text-zinc-300">
+        <div className="flex-1 space-y-1.5 sm:space-y-2 text-white min-w-0 w-full">
+          <span className="text-[11px] sm:text-xs uppercase font-extrabold tracking-widest text-zinc-300">
             {playlist.isCustom ? 'Playlist Cá Nhân' : 'Tuyển Chọn SoundWave'}
           </span>
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight line-clamp-2">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight line-clamp-2">
             {playlist.title}
           </h1>
-          <p className="text-xs md:text-sm text-zinc-300 line-clamp-2 pt-1">
+          <p className="text-xs sm:text-sm text-zinc-300 line-clamp-2 pt-0.5 sm:pt-1">
             {playlist.description || 'Danh sách bài hát tuyển chọn'}
           </p>
-          <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium pt-2">
+          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-zinc-300 font-medium pt-1 sm:pt-2 flex-wrap">
             <span className="font-bold text-white">
               {playlist.isCustom ? 'Tạo bởi bạn' : 'SoundWave Curated'}
             </span>
@@ -109,12 +118,12 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* Action Bar */}
-      <div className="px-6 md:px-8 py-5 flex items-center gap-4">
+      <div className="px-4 sm:px-6 md:px-8 py-3.5 sm:py-5 flex items-center gap-3 sm:gap-4">
         {/* Play Button */}
         <button
           onClick={handlePlayAll}
           disabled={playlist.songs.length === 0}
-          className="w-14 h-14 rounded-full bg-[#1ed760] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#1ed760] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           title={isThisPlaylistPlaying ? 'Tạm dừng' : 'Phát tất cả'}
         >
           {isThisPlaylistPlaying ? (

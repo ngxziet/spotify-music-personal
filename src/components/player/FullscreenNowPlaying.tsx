@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAudio } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
+import { usePwa } from '@/context/PwaContext';
 import { formatTime } from '@/utils/format';
 import {
   ChevronDown,
@@ -48,22 +49,31 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
     setIsQueueOpen,
   } = useAudio();
 
-  const { isSongLiked, toggleLikeSong, downloadSong } = useLibrary();
+  const { isSongLiked, isSongOffline, toggleLikeSong, downloadSong } = useLibrary();
+  const { showToast } = usePwa();
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   if (!isNowPlayingOpen || !currentSong) return null;
 
   const isLiked = isSongLiked(currentSong.id);
+  const isOfflineReady = isSongOffline(currentSong.id) || !!currentSong.isLocal || !!currentSong.isDownloaded;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleDownload = async () => {
+    if (currentSong.youtubeId && !currentSong.audioUrl) {
+      showToast('Nhạc từ YouTube chỉ phát trực tuyến. Hãy chọn bài Full Track (Curated/Audius) để tải offline.', 'warning');
+      return;
+    }
     setIsDownloading(true);
     const ok = await downloadSong(currentSong, true);
     setIsDownloading(false);
     if (ok) {
       setDownloadSuccess(true);
+      showToast(`Đã lưu "${currentSong.title}" để nghe Offline!`, 'success');
       setTimeout(() => setDownloadSuccess(false), 2000);
+    } else {
+      showToast('Không thể tải bài hát này lúc này.', 'warning');
     }
   };
 
@@ -80,7 +90,7 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-between p-6 bg-gradient-to-b from-zinc-900 via-[#121212] to-black text-white animate-in slide-in-from-bottom duration-300 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex flex-col justify-between p-4 sm:p-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] bg-gradient-to-b from-zinc-900 via-[#121212] to-black text-white animate-in slide-in-from-bottom duration-300 overflow-y-auto">
       {/* Background ambient blur */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-25">
         <Image
@@ -101,11 +111,11 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
           <ChevronDown className="w-6 h-6" />
         </button>
 
-        <div className="text-center">
+        <div className="text-center px-2 min-w-0">
           <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-400">
             Đang Phát Bài Hát
           </p>
-          <p className="text-xs font-semibold text-zinc-200 truncate max-w-[200px]">
+          <p className="text-xs font-semibold text-zinc-200 truncate max-w-[180px] sm:max-w-[260px]">
             {currentSong.album || 'SoundWave Music'}
           </p>
         </div>
@@ -119,9 +129,9 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
         </button>
       </div>
 
-      {/* Main Cover Artwork */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-6">
-        <div className="relative aspect-square w-full max-w-sm rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 group">
+      {/* Main Cover Artwork (Adaptive for portrait, landscape, small & large screens) */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-3 sm:my-6 min-h-0">
+        <div className="relative aspect-square w-full max-w-[260px] xs:max-w-[290px] sm:max-w-sm max-h-[38vh] sm:max-h-[46vh] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 group">
           <Image
             src={currentSong.coverUrl}
             alt={currentSong.title}
@@ -130,7 +140,7 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
             priority
           />
           {isPlaying && (
-            <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
+            <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow">
               <span className="w-2 h-2 rounded-full bg-[#1ed760] animate-ping"></span>
               <span className="text-[10px] font-bold text-[#1ed760] uppercase">Playing</span>
             </div>
@@ -166,10 +176,12 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
             <button
               onClick={handleDownload}
               disabled={isDownloading}
-              className="p-2 rounded-full text-zinc-400 hover:text-white transition-colors"
-              title="Tải MP3 về máy"
+              className={`p-2 rounded-full transition-colors ${
+                downloadSuccess || isOfflineReady ? 'text-[#1ed760]' : 'text-zinc-400 hover:text-white'
+              }`}
+              title={isOfflineReady ? 'Đã lưu Offline (Nhấn để tải .mp3)' : 'Tải MP3 về máy & lưu Offline'}
             >
-              {downloadSuccess ? (
+              {downloadSuccess || isOfflineReady ? (
                 <Check className="w-6 h-6 text-[#1ed760]" />
               ) : (
                 <Download

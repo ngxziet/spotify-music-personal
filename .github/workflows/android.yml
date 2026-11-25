@@ -1,0 +1,61 @@
+name: SoundWave Android
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: soundwave-android-release
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle
+            android/gradle/wrapper/gradle-wrapper.properties
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Build and verify signed APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SOUNDWAVE_KEYSTORE_BASE64 }}
+          SOUNDWAVE_KEYSTORE_PASSWORD: ${{ secrets.SOUNDWAVE_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_BASE64" && test -n "$SOUNDWAVE_KEYSTORE_PASSWORD"
+          umask 077
+          export SOUNDWAVE_KEYSTORE="$RUNNER_TEMP/soundwave-release.p12"
+          export SOUNDWAVE_VERSION_CODE=$((GITHUB_RUN_NUMBER + 1))
+          trap 'rm -f "$SOUNDWAVE_KEYSTORE"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$SOUNDWAVE_KEYSTORE"
+          bash android/gradlew -p android :app:assembleRelease
+          cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/SoundWave.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$RUNNER_TEMP/SoundWave.apk"
+      - name: Publish APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          revision=$GITHUB_RUN_NUMBER
+          tag="android-v1.0.$revision"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$RUNNER_TEMP/SoundWave.apk" --clobber
+          else
+            gh release create "$tag" "$RUNNER_TEMP/SoundWave.apk" \
+              --target "$GITHUB_SHA" --latest --title "SoundWave Android 1.0.$revision" --generate-notes
+          fi

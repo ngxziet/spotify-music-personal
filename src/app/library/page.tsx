@@ -24,15 +24,15 @@ export default function LibraryPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'playlists' | 'offline' | 'uploaded' | 'history'>('all');
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-6">
+    <div className="px-3 sm:px-6 md:px-8 py-4 sm:py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-[#1ed760]/20 text-[#1ed760]">
+          <div className="p-2.5 rounded-lg bg-[#1ed760]/20 text-[#1ed760] flex-shrink-0">
             <Library className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-white">Thư Viện Của Bạn</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Thư Viện Của Bạn</h1>
             <p className="text-xs text-zinc-400">
               Quản lý các danh sách phát, bài hát đã tải về và file nhạc cá nhân
             </p>
@@ -40,26 +40,26 @@ export default function LibraryPage() {
         </div>
 
         {/* Quick action buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/history"
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-600 to-teal-600 text-white text-xs font-bold hover:scale-105 transition-transform"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-gradient-to-r from-cyan-600 to-teal-600 text-white text-[11px] sm:text-xs font-bold hover:scale-105 active:scale-95 transition-transform"
           >
-            <History className="w-4 h-4" />
+            <History className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Lịch Sử ({history.length})</span>
           </Link>
           <Link
             href="/liked"
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold hover:scale-105 transition-transform"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[11px] sm:text-xs font-bold hover:scale-105 active:scale-95 transition-transform"
           >
-            <Heart className="w-4 h-4 fill-white" />
+            <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white" />
             <span>Yêu Thích ({likedSongIds.length})</span>
           </Link>
           <Link
             href="/offline"
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold hover:scale-105 transition-transform"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] sm:text-xs font-bold hover:scale-105 active:scale-95 transition-transform"
           >
-            <DownloadCloud className="w-4 h-4" />
+            <DownloadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Offline ({offlineSongs.length})</span>
           </Link>
         </div>

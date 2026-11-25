@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Song, Playlist } from '@/types';
 import { useAudio } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
+import { usePwa } from '@/context/PwaContext';
 import { formatTime } from '@/utils/format';
 import { Play, Pause, Heart, Download, Plus, Check, Trash2, Music2 } from 'lucide-react';
 import { SafeImage as Image } from '@/components/ui/SafeImage';
@@ -18,13 +19,15 @@ interface SongRowProps {
 
 export function SongRow({ song, index, playlistContext, showAlbum = true, onRemove }: SongRowProps) {
   const { currentSong, isPlaying, playSong, togglePlay } = useAudio();
-  const { isSongLiked, toggleLikeSong, downloadSong, playlists, addSongToPlaylist } = useLibrary();
+  const { isSongLiked, isSongOffline, toggleLikeSong, downloadSong, playlists, addSongToPlaylist } = useLibrary();
+  const { showToast } = usePwa();
   const [isDownloading, setIsDownloading] = useState(false);
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   const isCurrent = currentSong?.id === song.id;
   const isLiked = isSongLiked(song.id);
+  const isOfflineReady = isSongOffline(song.id) || !!song.isLocal || !!song.isDownloaded;
 
   const handleRowClick = () => {
     if (isCurrent) {
@@ -36,12 +39,19 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (song.youtubeId && !song.audioUrl) {
+      showToast('Nhạc từ YouTube chỉ phát trực tuyến. Chọn bài Full Track (Curated/Audius) hoặc tải MP3 lên để lưu offline.', 'warning');
+      return;
+    }
     setIsDownloading(true);
     const success = await downloadSong(song, true);
     setIsDownloading(false);
     if (success) {
       setDownloadSuccess(true);
+      showToast(`Đã lưu "${song.title}" vào kho Offline!`, 'success');
       setTimeout(() => setDownloadSuccess(false), 2000);
+    } else {
+      showToast('Không thể tải bài hát này lúc này.', 'warning');
     }
   };
 
@@ -106,7 +116,12 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
                 Preview 30s
               </span>
             )}
-            {(song.source === 'audius' || song.source === 'curated' || song.isFullTrack) && !song.isLocal && (
+            {song.youtubeId && (
+              <span className="ml-1.5 text-[10px] text-zinc-400" title="Tạm dừng khi khóa màn hình">
+                YouTube
+              </span>
+            )}
+            {!song.youtubeId && (song.source === 'audius' || song.source === 'curated' || song.isFullTrack) && !song.isLocal && (
               <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-[#1ed760]/20 text-[#1ed760] font-medium" title="Bản nhạc đầy đủ">
                 Full Track
               </span>
@@ -123,26 +138,34 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
       )}
 
       {/* Right: Actions & Duration */}
-      <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
         {/* Like Button */}
         <button
           onClick={handleLike}
           className={`p-1.5 rounded-full transition-transform active:scale-90 ${
-            isLiked ? 'text-[#1ed760]' : 'text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white'
+            isLiked
+              ? 'text-[#1ed760]'
+              : 'text-zinc-400 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 hover:text-white'
           }`}
           title={isLiked ? 'Xóa khỏi bài hát yêu thích' : 'Thêm vào bài hát yêu thích'}
+          aria-label="Yêu thích bài hát"
         >
           <Heart className={`w-4 h-4 ${isLiked ? 'fill-[#1ed760]' : ''}`} />
         </button>
 
-        {/* Download Button */}
+        {/* Download / Offline Button */}
         <button
           onClick={handleDownload}
           disabled={isDownloading}
-          className="p-1.5 rounded-full text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity"
-          title="Tải bài hát về máy (.mp3)"
+          className={`p-1.5 rounded-full transition-opacity ${
+            downloadSuccess || isOfflineReady
+              ? 'text-[#1ed760] opacity-100'
+              : 'text-zinc-400 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 hover:text-white'
+          }`}
+          title={isOfflineReady ? 'Đã lưu Offline (Nhấn để tải lại .mp3)' : 'Lưu nghe Offline & Tải .mp3'}
+          aria-label="Tải bài hát offline"
         >
-          {downloadSuccess ? (
+          {downloadSuccess || isOfflineReady ? (
             <Check className="w-4 h-4 text-[#1ed760]" />
           ) : (
             <Download className={`w-4 h-4 ${isDownloading ? 'animate-bounce text-[#1ed760]' : ''}`} />
@@ -156,15 +179,16 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
               e.stopPropagation();
               setShowPlaylistMenu(!showPlaylistMenu);
             }}
-            className="p-1.5 rounded-full text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity"
+            className="p-1.5 rounded-full text-zinc-400 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 hover:text-white transition-opacity"
             title="Thêm vào playlist"
+            aria-label="Thêm vào playlist"
           >
             <Plus className="w-4 h-4" />
           </button>
 
           {showPlaylistMenu && (
             <div
-              className="absolute right-0 top-8 w-48 bg-[#282828] border border-zinc-700 rounded-md shadow-2xl py-1 z-50 text-xs text-white"
+              className="absolute right-0 top-8 w-44 sm:w-48 bg-[#282828] border border-zinc-700 rounded-md shadow-2xl py-1 z-50 text-xs text-white"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-3 py-1.5 text-zinc-400 font-semibold border-b border-zinc-700">

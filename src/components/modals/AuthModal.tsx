@@ -92,23 +92,23 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-lg bg-[#282828] text-white rounded-xl shadow-2xl overflow-hidden border border-zinc-700/60"
+        className="relative w-full max-w-lg bg-[#282828] text-white rounded-xl shadow-2xl overflow-hidden border border-zinc-700/60 max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 z-10"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 z-10"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Tab Header */}
-        <div className="flex border-b border-zinc-700 bg-zinc-900/60 px-4 pt-4">
+        <div className="flex border-b border-zinc-700 bg-zinc-900/60 px-2 sm:px-4 pt-3 sm:pt-4 overflow-x-auto scrollbar-none">
           <button
             onClick={() => setTab('profile')}
-            className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold rounded-t-lg transition-colors whitespace-nowrap ${
               tab === 'profile'
                 ? 'bg-[#282828] text-[#1ed760] border-t-2 border-[#1ed760]'
                 : 'text-zinc-400 hover:text-white'
@@ -118,7 +118,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </button>
           <button
             onClick={() => setTab('switch')}
-            className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold rounded-t-lg transition-colors whitespace-nowrap ${
               tab === 'switch'
                 ? 'bg-[#282828] text-[#1ed760] border-t-2 border-[#1ed760]'
                 : 'text-zinc-400 hover:text-white'
@@ -128,7 +128,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </button>
           <button
             onClick={() => setTab('register')}
-            className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold rounded-t-lg transition-colors whitespace-nowrap ${
               tab === 'register'
                 ? 'bg-[#282828] text-[#1ed760] border-t-2 border-[#1ed760]'
                 : 'text-zinc-400 hover:text-white'
@@ -138,7 +138,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </button>
           <button
             onClick={() => setTab('backup')}
-            className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold rounded-t-lg transition-colors whitespace-nowrap ${
               tab === 'backup'
                 ? 'bg-[#282828] text-[#1ed760] border-t-2 border-[#1ed760]'
                 : 'text-zinc-400 hover:text-white'
@@ -148,7 +148,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {/* TAB 1: Profile View & Edit */}
           {tab === 'profile' && (
             <form onSubmit={handleUpdateProfile} className="space-y-4">

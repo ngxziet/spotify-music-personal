@@ -1,16 +1,63 @@
 {
-  "name": "SoundWave - Web Nghe Nhạc Cá Nhân",
+  "id": "/",
+  "name": "SoundWave - Nghe Nhạc Cá Nhân & Offline",
   "short_name": "SoundWave",
-  "description": "Ứng dụng nghe nhạc cá nhân SoundWave, hỗ trợ tải nhạc offline và thư viện riêng.",
-  "start_url": "/",
+  "description": "Ứng dụng nghe nhạc cá nhân hiện đại, hỗ trợ tải nhạc offline, phát nền mượt mà và quản lý thư viện riêng.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#000000",
-  "theme_color": "#1ed760",
+  "theme_color": "#121212",
+  "lang": "vi",
+  "categories": ["music", "entertainment"],
   "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nhạc Đã Tải Về (Offline)",
+      "short_name": "Offline",
+      "description": "Mở danh sách nhạc nghe ngoại tuyến",
+      "url": "/offline",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Tìm Kiếm Bài Hát",
+      "short_name": "Tìm Kiếm",
+      "description": "Tìm bài hát, nghệ sĩ yêu thích",
+      "url": "/search",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Bài Hát Đã Thích",
+      "short_name": "Yêu Thích",
+      "description": "Nghe các bài hát bạn đã thả tim",
+      "url": "/liked",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

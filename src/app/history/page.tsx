@@ -69,17 +69,17 @@ export default function HistoryPage() {
   return (
     <div className="relative min-h-full">
       {/* Top Cyan/Slate Gradient Header */}
-      <div className="relative p-6 md:p-8 bg-gradient-to-b from-cyan-900 via-slate-900 to-[#121212] flex flex-col md:flex-row items-start md:items-end gap-6 shadow-xl border-b border-white/5">
+      <div className="relative p-4 sm:p-6 md:p-8 bg-gradient-to-b from-cyan-900 via-slate-900 to-[#121212] flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 shadow-xl border-b border-white/5 text-center sm:text-left">
         {/* Large History Icon Card */}
-        <div className="relative w-40 h-40 md:w-52 md:h-52 rounded-xl bg-gradient-to-br from-cyan-600 via-teal-600 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xl border border-white/10 group">
-          <History className="w-20 h-20 md:w-24 md:h-24 text-white drop-shadow-md transition-transform group-hover:scale-110 duration-300" />
+        <div className="relative w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-xl bg-gradient-to-br from-cyan-600 via-teal-600 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xl border border-white/10 group mx-auto sm:mx-0">
+          <History className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-white drop-shadow-md transition-transform group-hover:scale-110 duration-300" />
           <div className="absolute inset-0 bg-white/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
 
         {/* Header Details */}
-        <div className="flex-1 space-y-2 text-white">
-          <div className="flex items-center gap-2">
-            <span className="text-xs uppercase font-extrabold tracking-widest text-cyan-300">
+        <div className="flex-1 space-y-1.5 sm:space-y-2 text-white min-w-0 w-full">
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            <span className="text-[11px] sm:text-xs uppercase font-extrabold tracking-widest text-cyan-300">
               NHẬT KÝ PHÁT
             </span>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-medium">
@@ -87,15 +87,15 @@ export default function HistoryPage() {
             </span>
           </div>
 
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight">
             Lịch Sử Nghe Nhạc
           </h1>
 
-          <p className="text-xs md:text-sm text-zinc-300 line-clamp-1 pt-1">
+          <p className="text-xs sm:text-sm text-zinc-300 line-clamp-1 pt-0.5 sm:pt-1">
             Danh sách các bài hát bạn đã thưởng thức gần đây trên SoundWave
           </p>
 
-          <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium pt-2">
+          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-zinc-300 font-medium pt-1 sm:pt-2 flex-wrap">
             <span className="font-bold text-white">Bộ nhớ thiết bị</span>
             <span>•</span>
             <span>{history.length} bài hát</span>
@@ -110,12 +110,12 @@ export default function HistoryPage() {
       </div>
 
       {/* Action Bar */}
-      <div className="px-6 md:px-8 py-5 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800/60 bg-[#121212]/50 backdrop-blur-sm sticky top-[60px] z-20">
-        <div className="flex items-center gap-4">
+      <div className="px-4 sm:px-6 md:px-8 py-3.5 sm:py-5 flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-zinc-800/60 bg-[#121212]/90 backdrop-blur-md sticky top-[52px] sm:top-[60px] z-20">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={handlePlayAll}
             disabled={filteredHistory.length === 0}
-            className="w-14 h-14 rounded-full bg-[#1ed760] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#1ed760] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-40 disabled:cursor-not-allowed"
             title={isHistoryPlaying ? 'Tạm dừng' : 'Phát lại toàn bộ lịch sử'}
           >
             {isHistoryPlaying ? (

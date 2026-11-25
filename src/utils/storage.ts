@@ -31,11 +31,29 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
+// In-memory cache to avoid leaking duplicate ObjectURLs across refreshes
+const offlineBlobUrlCache = new Map<string, string>();
+const uploadBlobUrlCache = new Map<string, string>();
+
+export function getCachedOfflineUrl(songId: string): string | undefined {
+  return offlineBlobUrlCache.get(songId);
+}
+
 // Save song audio blob for offline listening
 export async function saveSongOffline(song: Song): Promise<boolean> {
   try {
+    if (!song.audioUrl || song.audioUrl.trim() === '') {
+      return false;
+    }
+
     const res = await fetch(song.audioUrl);
+    if (!res.ok) return false;
+
     const blob = await res.blob();
+    if (!blob || blob.size === 0 || blob.type.includes('text/html')) {
+      return false;
+    }
+
     const db = await openDB();
 
     return new Promise((resolve, reject) => {
@@ -71,20 +89,25 @@ export async function getOfflineSongs(): Promise<Song[]> {
       req.onsuccess = () => {
         const records = req.result || [];
         const songs: Song[] = records.map((r: any) => {
-          const blobUrl = URL.createObjectURL(r.audioBlob);
+          let blobUrl = offlineBlobUrlCache.get(r.id);
+          if (!blobUrl && r.audioBlob) {
+            blobUrl = URL.createObjectURL(r.audioBlob);
+            offlineBlobUrlCache.set(r.id, blobUrl);
+          }
           return {
             id: r.id,
             title: r.title,
             artist: r.artist,
             album: r.album,
             duration: r.duration,
-            audioUrl: blobUrl,
+            audioUrl: blobUrl || r.audioUrl || '',
             coverUrl: r.coverUrl,
             category: r.category,
             lyrics: r.lyrics,
             isDownloaded: true,
             downloadedAt: r.downloadedAt,
-            source: r.source
+            source: r.source,
+            isFullTrack: r.isFullTrack,
           };
         });
         resolve(songs);
@@ -100,6 +123,12 @@ export async function getOfflineSongs(): Promise<Song[]> {
 // Remove an offline song from IndexedDB
 export async function removeOfflineSong(songId: string): Promise<boolean> {
   try {
+    const cachedUrl = offlineBlobUrlCache.get(songId);
+    if (cachedUrl) {
+      URL.revokeObjectURL(cachedUrl);
+      offlineBlobUrlCache.delete(songId);
+    }
+
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_OFFLINE, 'readwrite');
@@ -111,6 +140,33 @@ export async function removeOfflineSong(songId: string): Promise<boolean> {
   } catch (err) {
     console.error('Failed to remove offline song:', err);
     return false;
+  }
+}
+
+// Lookup a single offline audio Blob URL on demand
+export async function getOfflineBlobUrl(songId: string): Promise<string | null> {
+  const cached = offlineBlobUrlCache.get(songId);
+  if (cached) return cached;
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_OFFLINE, 'readonly');
+      const store = tx.objectStore(STORE_OFFLINE);
+      const req = store.get(songId);
+      req.onsuccess = () => {
+        const record = req.result;
+        if (record?.audioBlob) {
+          const blobUrl = URL.createObjectURL(record.audioBlob);
+          offlineBlobUrlCache.set(songId, blobUrl);
+          resolve(blobUrl);
+        } else {
+          resolve(null);
+        }
+      };
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
   }
 }
 
@@ -131,10 +187,17 @@ export async function isSongDownloaded(songId: string): Promise<boolean> {
 }
 
 // Trigger direct browser download of song audio file
-export async function triggerBrowserDownload(song: Song) {
+export async function triggerBrowserDownload(song: Song): Promise<boolean> {
+  if (!song.audioUrl || song.audioUrl.trim() === '') {
+    return false;
+  }
   try {
     const res = await fetch(song.audioUrl);
+    if (!res.ok) return false;
     const blob = await res.blob();
+    if (!blob || blob.size === 0 || blob.type.includes('text/html')) {
+      return false;
+    }
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.style.display = 'none';
@@ -145,9 +208,11 @@ export async function triggerBrowserDownload(song: Song) {
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+    return true;
   } catch (err) {
     console.error('Download failed, opening direct stream:', err);
     window.open(song.audioUrl, '_blank');
+    return true;
   }
 }
 
@@ -184,14 +249,18 @@ export async function getUploadedSongs(): Promise<Song[]> {
       req.onsuccess = () => {
         const records = req.result || [];
         const songs: Song[] = records.map((r: any) => {
-          const blobUrl = URL.createObjectURL(r.audioBlob);
+          let blobUrl = uploadBlobUrlCache.get(r.id);
+          if (!blobUrl && r.audioBlob) {
+            blobUrl = URL.createObjectURL(r.audioBlob);
+            uploadBlobUrlCache.set(r.id, blobUrl);
+          }
           return {
             id: r.id,
             title: r.title,
             artist: r.artist,
             album: r.album || 'Nhạc Tải Lên',
             duration: r.duration || 180,
-            audioUrl: blobUrl,
+            audioUrl: blobUrl || '',
             coverUrl: r.coverUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
             category: 'Nhạc Của Tôi',
             isLocal: true,
@@ -391,7 +460,7 @@ export const DEFAULT_USER: UserProfile = {
   email: 'user@soundwave.io',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
   bio: 'Yêu âm nhạc mỗi ngày 🎵 Lofi & V-Pop',
-  createdAt: new Date().toISOString()
+  createdAt: '2026-01-01T00:00:00.000Z'
 };
 
 export function getStoredUserProfile(): UserProfile {

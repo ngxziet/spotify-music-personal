@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application' version '8.11.1'
+}
+
+def signingPath = System.getenv('SOUNDWAVE_KEYSTORE')
+def signingPassword = System.getenv('SOUNDWAVE_KEYSTORE_PASSWORD')
+
+android {
+    namespace 'com.soundwave.music'
+    compileSdk 36
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        applicationId 'com.soundwave.music'
+        minSdk 24
+        targetSdk 36
+        versionCode providers.environmentVariable('SOUNDWAVE_VERSION_CODE').getOrElse('1').toInteger()
+        versionName "1.0.${versionCode - 1}"
+    }
+
+    signingConfigs {
+        release {
+            if (signingPath && signingPassword) {
+                storeFile file(signingPath)
+                storePassword signingPassword
+                keyAlias 'soundwave'
+                keyPassword signingPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.media3:media3-exoplayer:1.8.0'
+    implementation 'androidx.media3:media3-session:1.8.0'
+    implementation 'androidx.webkit:webkit:1.14.0'
+}

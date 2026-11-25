@@ -27,33 +27,33 @@ export function QueueDrawer() {
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full max-w-md h-full bg-[#181818] border-l border-zinc-800 flex flex-col text-white shadow-2xl animate-in slide-in-from-right duration-300"
+        className="w-full sm:max-w-md h-full bg-[#181818] border-l border-zinc-800 flex flex-col text-white shadow-2xl animate-in slide-in-from-right duration-300 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-zinc-800">
           {/* Segmented Tab Controls */}
           <div className="flex items-center bg-zinc-900 p-1 rounded-lg border border-zinc-800">
             <button
               onClick={() => setActiveTab('queue')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-[11px] sm:text-xs font-semibold transition-all ${
                 activeTab === 'queue'
                   ? 'bg-zinc-800 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <ListMusic className="w-4 h-4 text-[#1ed760]" />
+              <ListMusic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1ed760]" />
               <span>Hàng Đợi ({queue.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-[11px] sm:text-xs font-semibold transition-all ${
                 activeTab === 'history'
                   ? 'bg-zinc-800 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <History className="w-4 h-4 text-cyan-400" />
+              <History className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" />
               <span>Lịch Sử ({history.length})</span>
             </button>
           </div>

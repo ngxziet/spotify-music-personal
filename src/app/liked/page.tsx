@@ -41,24 +41,24 @@ export default function LikedSongsPage() {
   return (
     <div className="relative min-h-full">
       {/* Top Purple Gradient Header */}
-      <div className="relative p-6 md:p-8 bg-gradient-to-b from-indigo-700 via-purple-900 to-[#121212] flex flex-col md:flex-row items-start md:items-end gap-6 shadow-xl">
+      <div className="relative p-4 sm:p-6 md:p-8 bg-gradient-to-b from-indigo-700 via-purple-900 to-[#121212] flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 shadow-xl text-center sm:text-left">
         {/* Heart Large Card */}
-        <div className="relative w-44 h-44 md:w-56 md:h-56 rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-2xl border border-white/10">
-          <Heart className="w-24 h-24 fill-white text-white drop-shadow-lg" />
+        <div className="relative w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-2xl border border-white/10 mx-auto sm:mx-0">
+          <Heart className="w-16 h-16 sm:w-24 sm:h-24 fill-white text-white drop-shadow-lg" />
         </div>
 
         {/* Info */}
-        <div className="flex-1 space-y-2 text-white">
-          <span className="text-xs uppercase font-extrabold tracking-widest text-zinc-300">
+        <div className="flex-1 space-y-1.5 sm:space-y-2 text-white min-w-0 w-full">
+          <span className="text-[11px] sm:text-xs uppercase font-extrabold tracking-widest text-zinc-300">
             PLAYLIST
           </span>
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight">
             Bài Hát Đã Thích
           </h1>
-          <p className="text-xs md:text-sm text-zinc-300 line-clamp-1 pt-1">
+          <p className="text-xs sm:text-sm text-zinc-300 line-clamp-1 pt-0.5 sm:pt-1">
             Tuyển tập các bài hát bạn yêu thích nhất trên SoundWave
           </p>
-          <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium pt-2">
+          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-zinc-300 font-medium pt-1 sm:pt-2 flex-wrap">
             <span className="font-bold text-white">Bộ sưu tập cá nhân</span>
             <span>•</span>
             <span>{uniqueLikedSongs.length} bài hát</span>
@@ -69,11 +69,11 @@ export default function LikedSongsPage() {
       </div>
 
       {/* Action Bar */}
-      <div className="px-6 md:px-8 py-5 flex items-center gap-4">
+      <div className="px-4 sm:px-6 md:px-8 py-3.5 sm:py-5 flex items-center gap-3 sm:gap-4">
         <button
           onClick={handlePlayAll}
           disabled={uniqueLikedSongs.length === 0}
-          className="w-14 h-14 rounded-full bg-[#1ed760] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#1ed760] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           title={isLikedPlaying ? 'Tạm dừng' : 'Phát tất cả'}
         >
           {isLikedPlaying ? (

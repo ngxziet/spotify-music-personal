@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLibrary } from '@/context/LibraryContext';
+import { usePwa } from '@/context/PwaContext';
 import {
   Home,
   Search,
@@ -15,6 +16,8 @@ import {
   Music,
   Trash2,
   History,
+  Smartphone,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +28,7 @@ interface SidebarProps {
 export function Sidebar({ onOpenCreatePlaylist, onOpenUploadSong }: SidebarProps) {
   const pathname = usePathname();
   const { playlists, deletePlaylist } = useLibrary();
+  const { isStandalone, promptInstall } = usePwa();
 
   const navLinks = [
     { href: '/', label: 'Trang Chủ', icon: Home },
@@ -33,7 +37,7 @@ export function Sidebar({ onOpenCreatePlaylist, onOpenUploadSong }: SidebarProps
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 bg-black h-full p-2 gap-2 text-zinc-300 select-none flex-shrink-0">
+    <aside className="hidden md:flex flex-col w-56 lg:w-64 bg-black h-full p-2 gap-2 text-zinc-300 select-none flex-shrink-0 transition-all duration-200">
       {/* Top Box: Brand & Main Navigation */}
       <div className="bg-[#121212] rounded-lg p-5 flex flex-col gap-5">
         <Link href="/" className="flex items-center gap-2 group">
@@ -182,6 +186,24 @@ export function Sidebar({ onOpenCreatePlaylist, onOpenUploadSong }: SidebarProps
               </div>
             );
           })}
+        </div>
+
+        {/* Install App Footer CTA */}
+        <div className="pt-2 mt-2 border-t border-zinc-800/80">
+          {isStandalone ? (
+            <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">Đang chạy chế độ App</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => promptInstall()}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-[#1ed760] text-zinc-200 hover:text-black text-xs font-bold transition-all"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>Cài Đặt App Về Máy</span>
+            </button>
+          )}
         </div>
       </div>
     </aside>

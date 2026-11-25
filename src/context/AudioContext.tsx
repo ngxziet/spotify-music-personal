@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useEffectEvent, useRef, useState, useCallback } from 'react';
 import { Song, RepeatMode } from '@/types';
 import {
   addRecentlyPlayed,
@@ -11,13 +11,46 @@ import {
   saveStoredLastPlayed,
   getStoredQueue,
   saveStoredQueue,
+  getCachedOfflineUrl,
+  getOfflineBlobUrl,
 } from '@/utils/storage';
 import { CURATED_SONGS } from '@/data/mockData';
+import {
+  androidBridge,
+  directAndroidTrack,
+  prepareAndroidTrack,
+  sendAndroidPlayback,
+  type AndroidPlaybackEvent,
+} from '@/utils/androidPlayback';
+import { usePwa } from '@/context/PwaContext';
+
+interface YouTubePlayer {
+  cueVideoById(options: { videoId: string; startSeconds: number }): void;
+  loadVideoById(video: string | { videoId: string; startSeconds: number }): void;
+  playVideo(): void;
+  pauseVideo(): void;
+  getDuration(): number;
+  getCurrentTime(): number;
+  getVideoData(): { video_id?: string };
+  seekTo(time: number, allowSeekAhead: boolean): void;
+  setVolume(volume: number): void;
+  setPlaybackRate(rate: number): void;
+}
 
 declare global {
   interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: any;
+    YT?: {
+      Player: new (id: string, options: {
+        height: string;
+        width: string;
+        playerVars: Record<string, number>;
+        events: {
+          onReady(event: { target: YouTubePlayer }): void;
+          onStateChange(event: { data: number }): void;
+        };
+      }) => YouTubePlayer;
+    };
+    onYouTubeIframeAPIReady?: () => void;
   }
 }
 
@@ -62,10 +95,16 @@ const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const ytPlayerRef = useRef<any>(null);
-  const ytTimerRef = useRef<any>(null);
-  const silentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ytPlayerRef = useRef<YouTubePlayer | null>(null);
+  const ytTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const userWantsPlayingRef = useRef<boolean>(false);
+  const nativeActiveRef = useRef(false);
+  const nativePendingIdRef = useRef('');
+  const nativeRequestRef = useRef(0);
+  const nativeQueueRevisionRef = useRef(0);
+  const nativeSongsRef = useRef(new Map<string, Song>());
+  const nativeErrorRef = useRef('');
+  const { showToast } = usePwa();
   const ytVideoCuedRef = useRef<string>('');
   const lastSavedTimeRef = useRef<number>(0);
 
@@ -127,25 +166,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     audio.preload = 'metadata';
     audioRef.current = audio;
 
-    // Background media-lock keeper: loop silent WAV to prevent background tab audio suspension
-    const silent = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-    silent.loop = true;
-    silent.volume = 0.001;
-    silentAudioRef.current = silent;
-
     const savedVol = localStorage.getItem('spotify_volume');
     if (savedVol) {
       const volNum = parseFloat(savedVol);
       audio.volume = volNum;
-      setVolumeState(volNum);
+      queueMicrotask(() => setVolumeState(volNum));
     } else {
       audio.volume = 0.8;
     }
 
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onPlay = () => {
+      if (!nativeActiveRef.current && !currentSongRef.current?.youtubeId) setIsPlaying(true);
+    };
+    const onPause = () => {
+      if (!nativeActiveRef.current && !currentSongRef.current?.youtubeId) setIsPlaying(false);
+    };
     const onTimeUpdate = () => {
-      if (audio && !currentSongRef.current?.youtubeId) {
+      if (!nativeActiveRef.current && !currentSongRef.current?.youtubeId) {
         const t = audio.currentTime;
         setCurrentTime(t);
         if (Math.abs(t - lastSavedTimeRef.current) >= 2) {
@@ -157,7 +194,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
     };
     const onLoadedMetadata = () => {
-      if (audio && !currentSongRef.current?.youtubeId) {
+      if (!nativeActiveRef.current && !currentSongRef.current?.youtubeId) {
         setDuration(audio.duration || 0);
       }
     };
@@ -180,27 +217,39 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const storedHistory = getStoredRecentlyPlayed();
-    if (storedHistory && storedHistory.length > 0) {
-      setHistory(storedHistory);
-    }
     const storedQueue = getStoredQueue();
-    if (storedQueue && storedQueue.length > 0) {
-      setQueue(storedQueue);
-    }
     const lastPlayed = getStoredLastPlayed();
-    if (lastPlayed?.song) {
+    queueRef.current = storedQueue;
+    queueMicrotask(() => {
+      if (storedHistory.length > 0) setHistory(storedHistory);
+      if (storedQueue.length > 0) setQueue(storedQueue);
+      if (!lastPlayed?.song) return;
       setCurrentSong(lastPlayed.song);
       setDuration(lastPlayed.song.duration || lastPlayed.duration || 210);
+      setCurrentTime(lastPlayed.currentTime || 0);
+    });
+    if (lastPlayed?.song) {
+      currentSongRef.current = lastPlayed.song;
       const savedTime = lastPlayed.currentTime || 0;
-      setCurrentTime(savedTime);
       lastSavedTimeRef.current = savedTime;
 
       if (!lastPlayed.song.youtubeId && audioRef.current && lastPlayed.song.audioUrl) {
-        audioRef.current.src = lastPlayed.song.audioUrl;
-        audioRef.current.currentTime = savedTime;
+        if (lastPlayed.song.audioUrl.startsWith('blob:')) {
+          getOfflineBlobUrl(lastPlayed.song.id).then((freshUrl) => {
+            if (freshUrl && audioRef.current) {
+              audioRef.current.src = freshUrl;
+              audioRef.current.currentTime = savedTime;
+            }
+          });
+        } else {
+          audioRef.current.src = lastPlayed.song.audioUrl;
+          audioRef.current.currentTime = savedTime;
+        }
       }
     }
   }, []);
+
+  const onYouTubeEnded = useEffectEvent(() => playNext());
 
   // Initialize YouTube Iframe Player API
   useEffect(() => {
@@ -222,7 +271,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             iv_load_policy: 3,
           },
           events: {
-            onReady: (event: any) => {
+            onReady: (event) => {
               const lastPlayed = getStoredLastPlayed();
               if (lastPlayed?.song?.youtubeId) {
                 try {
@@ -236,35 +285,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 }
               }
             },
-            onStateChange: (event: any) => {
-              // 1 = PLAYING
+            onStateChange: (event) => {
+              if (!currentSongRef.current?.youtubeId) return;
               if (event.data === 1) {
                 setIsPlaying(true);
                 userWantsPlayingRef.current = true;
-                silentAudioRef.current?.play().catch(() => {});
                 const d = ytPlayerRef.current?.getDuration();
                 if (d && d > 0) setDuration(d);
-              }
-              // 2 = PAUSED
-              else if (event.data === 2) {
-                // If the user wants it playing and document is hidden (user switched tabs),
-                // YouTube tried to auto-pause: immediately resume playback in background!
-                if (userWantsPlayingRef.current && document.hidden) {
-                  setTimeout(() => {
-                    try {
-                      ytPlayerRef.current?.playVideo();
-                    } catch {}
-                  }, 80);
-                  return;
-                }
-                if (!userWantsPlayingRef.current) {
-                  setIsPlaying(false);
-                  silentAudioRef.current?.pause();
-                }
-              }
-              // 0 = ENDED
-              else if (event.data === 0) {
-                playNext();
+              } else if (event.data === 2) {
+                setIsPlaying(false);
+                userWantsPlayingRef.current = false;
+              } else if (event.data === 0) {
+                onYouTubeEnded();
               }
             },
           },
@@ -334,28 +366,25 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentSong?.youtubeId, isPlaying, currentTime]);
 
-  // Keep background audio active when tab visibility changes (opening other tabs)
   useEffect(() => {
     const onVisibilityChange = () => {
-      if (document.hidden && userWantsPlayingRef.current) {
-        silentAudioRef.current?.play().catch(() => {});
-        if (currentSong?.youtubeId && ytPlayerRef.current) {
-          setTimeout(() => {
-            try {
-              ytPlayerRef.current.playVideo();
-            } catch {}
-          }, 100);
-        }
-      }
+      if (document.hidden && currentSongRef.current?.youtubeId) ytPlayerRef.current?.pauseVideo();
     };
 
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, [currentSong?.youtubeId]);
+  }, []);
 
-  // Update MediaSession metadata
+  const onMediaPlay = useEffectEvent(() => {
+    if (!isPlayingRef.current) togglePlay();
+  });
+  const onMediaPause = useEffectEvent(() => pauseSong());
+  const onMediaNext = useEffectEvent(() => playNext());
+  const onMediaPrevious = useEffectEvent(() => playPrevious());
+  const onMediaSeek = useEffectEvent((time: number) => seekTo(time));
+
   useEffect(() => {
-    if (!currentSong || typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+    if (!currentSong || androidBridge() || !('mediaSession' in navigator)) return;
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title,
@@ -369,17 +398,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       ],
     });
 
-    navigator.mediaSession.setActionHandler('play', () => togglePlay());
-    navigator.mediaSession.setActionHandler('pause', () => togglePlay());
-    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious());
-    navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
+    navigator.mediaSession.setActionHandler('play', () => onMediaPlay());
+    navigator.mediaSession.setActionHandler('pause', () => onMediaPause());
+    navigator.mediaSession.setActionHandler('previoustrack', () => onMediaPrevious());
+    navigator.mediaSession.setActionHandler('nexttrack', () => onMediaNext());
     navigator.mediaSession.setActionHandler('seekto', (details) => {
-      if (details.seekTime !== undefined) seekTo(details.seekTime);
+      if (details.seekTime !== undefined) onMediaSeek(details.seekTime);
     });
   }, [currentSong]);
 
   // Play next song
-  const playNext = useCallback(() => {
+  function playNext() {
+    if (nativeActiveRef.current) {
+      sendAndroidPlayback({ action: 'next' });
+      return;
+    }
     if (queue.length > 0) {
       let nextIndex = 0;
       if (isShuffle && queue.length > 1) {
@@ -390,19 +423,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setQueue(remainingQueue);
       playSongInternal(nextSong);
     } else if (repeatMode === 'all' && history.length > 0) {
-      const songs = [...history.reverse(), currentSong].filter(Boolean) as Song[];
-      if (songs.length > 0) {
-        const first = songs[0];
-        setQueue(songs.slice(1));
-        playSongInternal(first);
-      }
+      const songs = [...history].reverse();
+      if (currentSong) songs.push(currentSong);
+      setQueue(songs.slice(1));
+      playSongInternal(songs[0]);
     } else {
       setIsPlaying(false);
     }
-  }, [queue, isShuffle, currentSong, history, repeatMode]);
+  }
 
   // Play previous song
-  const playPrevious = useCallback(() => {
+  function playPrevious() {
+    if (nativeActiveRef.current) {
+      sendAndroidPlayback({ action: 'previous' });
+      return;
+    }
     if (currentTime > 3) {
       seekTo(0);
       return;
@@ -417,34 +452,138 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } else {
       seekTo(0);
     }
-  }, [history, currentSong, currentTime]);
+  }
 
   // Handle HTML5 track ended
+  const onAudioEnded = useEffectEvent((audio: HTMLAudioElement) => {
+    if (nativeActiveRef.current || currentSongRef.current?.youtubeId) return;
+    if (repeatMode === 'one') {
+      audio.currentTime = 0;
+      audio.play().catch(console.error);
+    } else {
+      playNext();
+    }
+  });
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onEnded = () => {
-      if (repeatMode === 'one') {
-        audio.currentTime = 0;
-        audio.play().catch(console.error);
-      } else {
-        playNext();
-      }
-    };
+    const onEnded = () => onAudioEnded(audio);
 
     audio.addEventListener('ended', onEnded);
     return () => {
       audio.removeEventListener('ended', onEnded);
     };
-  }, [repeatMode, playNext]);
+  }, []);
+
+  const onNativeEvent = useEffectEvent((event: AndroidPlaybackEvent) => {
+    if (event.type === 'error') {
+      if (nativePendingIdRef.current && (!event.id || event.id === nativePendingIdRef.current)) {
+        nativePendingIdRef.current = '';
+        nativeActiveRef.current = false;
+        userWantsPlayingRef.current = false;
+        setIsPlaying(false);
+        showToast(event.message, 'warning');
+      }
+      return;
+    }
+    if (!event.id || currentSongRef.current?.youtubeId) return;
+    if (nativePendingIdRef.current && (nativePendingIdRef.current !== event.id
+        || nativeRequestRef.current !== event.request)) return;
+
+    const song = nativeSongsRef.current.get(event.id)
+      ?? [currentSongRef.current, ...queueRef.current, ...getStoredRecentlyPlayed()]
+        .find((item) => item?.id === event.id);
+    if (!song) return;
+    nativePendingIdRef.current = '';
+    nativeActiveRef.current = true;
+    userWantsPlayingRef.current = event.playing;
+    if (currentSongRef.current?.id !== song.id) {
+      const nextSong = { ...song, playedAt: new Date().toISOString() };
+      currentSongRef.current = nextSong;
+      setCurrentSong(nextSong);
+      addRecentlyPlayed(nextSong);
+      setHistory((previous) => [nextSong, ...previous.filter(({ id }) => id !== song.id)].slice(0, 50));
+      queueRef.current = queueRef.current.filter(({ id }) => id !== song.id);
+      setQueue(queueRef.current);
+      saveStoredQueue(queueRef.current);
+      lastSavedTimeRef.current = -2;
+    }
+    currentTimeRef.current = event.position;
+    setCurrentTime(event.position);
+    setDuration(event.duration || song.duration);
+    if (Math.abs(event.position - lastSavedTimeRef.current) >= 2 || event.playing !== isPlayingRef.current) {
+      lastSavedTimeRef.current = event.position;
+      saveStoredLastPlayed(song, event.position, event.playing);
+    }
+    isPlayingRef.current = event.playing;
+    setIsPlaying(event.playing);
+    if (event.error && nativeErrorRef.current !== event.id) {
+      nativeErrorRef.current = event.id;
+      showToast('Không mở được bài này. Bạn có thể thử lại hoặc chọn bài khác.', 'warning');
+    }
+  });
+
+  useEffect(() => {
+    const bridge = androidBridge();
+    if (!bridge) return;
+    bridge.onmessage = (message) => onNativeEvent(JSON.parse(message.data) as AndroidPlaybackEvent);
+    sendAndroidPlayback({ action: 'sync' });
+    return () => { bridge.onmessage = null; };
+  }, []);
+
+  const refreshNativeQueue = (songId: string, songs: Song[]) => {
+    const revision = ++nativeQueueRevisionRef.current;
+    void Promise.all(songs.map(prepareAndroidTrack)).then((tracks) => {
+      if (revision !== nativeQueueRevisionRef.current || !nativeActiveRef.current
+          || currentSongRef.current?.id !== songId) return;
+      for (const song of songs) nativeSongsRef.current.set(song.id, song);
+      sendAndroidPlayback({ action: 'queue', currentId: songId, queue: tracks.filter((track) => track !== undefined) });
+    });
+  };
+
+  const startNativeSong = async (song: Song, position: number) => {
+    const request = ++nativeRequestRef.current;
+    nativePendingIdRef.current = song.id;
+    nativeErrorRef.current = '';
+    nativeActiveRef.current = true;
+    userWantsPlayingRef.current = true;
+    audioRef.current?.pause();
+    ytPlayerRef.current?.pauseVideo();
+    sendAndroidPlayback({ action: 'pause' });
+    setIsPlaying(true);
+    const track = await prepareAndroidTrack(song);
+    if (nativeRequestRef.current !== request) return;
+    if (!track) {
+      nativePendingIdRef.current = '';
+      nativeActiveRef.current = false;
+      userWantsPlayingRef.current = false;
+      setIsPlaying(false);
+      showToast('Không tìm thấy tệp âm thanh để phát.', 'warning');
+      return;
+    }
+
+    const upcoming = queueRef.current.filter(({ id }) => id !== song.id);
+    for (const item of [song, ...upcoming]) nativeSongsRef.current.set(item.id, item);
+    const queue = upcoming.flatMap((item) => directAndroidTrack(item) ?? []);
+    sendAndroidPlayback({ action: 'rate', value: playbackRate });
+    sendAndroidPlayback({ action: 'volume', value: isMuted ? 0 : volume });
+    sendAndroidPlayback({ action: 'shuffle', enabled: isShuffle });
+    sendAndroidPlayback({ action: 'repeat', mode: repeatMode });
+    sendAndroidPlayback({ action: 'play', song: track, queue, position, autoplay: userWantsPlayingRef.current, request });
+    if (upcoming.some((item) => !item.youtubeId && (!directAndroidTrack(item) || item.isDownloaded))) {
+      refreshNativeQueue(song.id, upcoming);
+    }
+  };
 
   // Internal play dispatcher: handles YouTube or HTML5
-  const playSongInternal = (song: Song) => {
+  function playSongInternal(song: Song) {
     const songWithTime: Song = {
       ...song,
       playedAt: new Date().toISOString(),
     };
+    currentSongRef.current = songWithTime;
     setCurrentSong(songWithTime);
     setCurrentTime(0);
     lastSavedTimeRef.current = 0;
@@ -456,10 +595,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     });
     saveStoredLastPlayed(songWithTime, 0, true);
     userWantsPlayingRef.current = true;
-    silentAudioRef.current?.play().catch(() => {});
+
+    if (androidBridge()) {
+      if (!songWithTime.youtubeId) {
+        void startNativeSong(songWithTime, 0);
+        return;
+      }
+      nativeRequestRef.current++;
+      nativeQueueRevisionRef.current++;
+      nativePendingIdRef.current = '';
+      nativeActiveRef.current = false;
+      sendAndroidPlayback({ action: 'stop' });
+      showToast('Bài YouTube sẽ tạm dừng khi khóa màn hình.', 'info');
+    }
 
     if (songWithTime.youtubeId) {
-      ytVideoCuedRef.current = songWithTime.youtubeId;
+      const youtubeId = songWithTime.youtubeId;
+      ytVideoCuedRef.current = youtubeId;
       // Pause HTML5 audio
       if (audioRef.current) {
         audioRef.current.pause();
@@ -467,7 +619,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
         try {
-          ytPlayerRef.current.loadVideoById(songWithTime.youtubeId);
+          ytPlayerRef.current.loadVideoById(youtubeId);
           ytPlayerRef.current.playVideo();
           setIsPlaying(true);
         } catch (e) {
@@ -476,8 +628,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       } else {
         // If YT API not ready yet, retry in 800ms
         setTimeout(() => {
-          if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
-            ytPlayerRef.current.loadVideoById(songWithTime.youtubeId);
+          if (currentSongRef.current?.youtubeId === youtubeId && userWantsPlayingRef.current
+              && ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
+            ytPlayerRef.current.loadVideoById(youtubeId);
             ytPlayerRef.current.playVideo();
             setIsPlaying(true);
           }
@@ -492,34 +645,58 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
 
       const audio = audioRef.current;
-      if (audio && songWithTime.audioUrl) {
-        audio.src = songWithTime.audioUrl;
-        audio.playbackRate = playbackRate;
-        audio.play().then(() => {
-          setIsPlaying(true);
-        }).catch((err) => {
-          console.warn('Auto-play prevented or stream error:', err);
-        });
+      if (audio) {
+        const cachedOffline = getCachedOfflineUrl(songWithTime.id);
+        const playFromUrl = (targetUrl: string) => {
+          if (!targetUrl) return;
+          audio.src = targetUrl;
+          audio.playbackRate = playbackRate;
+          audio.play().then(() => {
+            setIsPlaying(true);
+          }).catch((err) => {
+            console.warn('Auto-play prevented or stream error:', err);
+          });
+        };
+
+        if (cachedOffline) {
+          playFromUrl(cachedOffline);
+        } else if (songWithTime.isDownloaded || (typeof navigator !== 'undefined' && !navigator.onLine) || songWithTime.audioUrl?.startsWith('blob:')) {
+          getOfflineBlobUrl(songWithTime.id).then((offlineUrl) => {
+            playFromUrl(offlineUrl || songWithTime.audioUrl);
+          });
+        } else if (songWithTime.audioUrl) {
+          playFromUrl(songWithTime.audioUrl);
+        }
       }
     }
-  };
+  }
 
   const playSong = (song: Song, newQueue?: Song[]) => {
     if (newQueue) {
       const filteredQueue = newQueue.filter((s) => s.id !== song.id);
+      queueRef.current = filteredQueue;
       setQueue(filteredQueue);
       saveStoredQueue(filteredQueue);
     }
     playSongInternal(song);
   };
 
-  const togglePlay = () => {
+  function togglePlay() {
     if (isPlaying) {
       pauseSong();
     } else {
       if (!currentSong) return;
       userWantsPlayingRef.current = true;
-      silentAudioRef.current?.play().catch(() => {});
+
+      if (androidBridge() && !currentSong.youtubeId) {
+        if (nativeActiveRef.current) {
+          if (!nativePendingIdRef.current) sendAndroidPlayback({ action: 'resume' });
+          else setIsPlaying(true);
+        } else {
+          void startNativeSong(currentSong, currentTime);
+        }
+        return;
+      }
 
       if (currentSong.youtubeId) {
         if (ytPlayerRef.current && typeof ytPlayerRef.current.playVideo === 'function') {
@@ -559,12 +736,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  };
+  }
 
-  const pauseSong = () => {
+  function pauseSong() {
     userWantsPlayingRef.current = false;
-    silentAudioRef.current?.pause();
-    if (currentSong?.youtubeId) {
+    if (nativeActiveRef.current) {
+      sendAndroidPlayback({ action: 'pause' });
+    } else if (currentSong?.youtubeId) {
       ytPlayerRef.current?.pauseVideo();
     } else {
       audioRef.current?.pause();
@@ -573,16 +751,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (currentSong) {
       saveStoredLastPlayed(currentSong, currentTime, false);
     }
-  };
+  }
 
   const resumeSong = () => {
     togglePlay();
   };
 
-  const seekTo = (time: number) => {
+  function seekTo(time: number) {
     setCurrentTime(time);
     lastSavedTimeRef.current = time;
-    if (currentSong?.youtubeId) {
+    if (nativeActiveRef.current) {
+      sendAndroidPlayback({ action: 'seek', position: time });
+    } else if (currentSong?.youtubeId) {
       try {
         ytPlayerRef.current?.seekTo(time, true);
       } catch {}
@@ -592,12 +772,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (currentSong) {
       saveStoredLastPlayed(currentSong, time, isPlaying);
     }
-  };
+  }
 
   const setVolume = (val: number) => {
     const bounded = Math.max(0, Math.min(1, val));
     setVolumeState(bounded);
     setIsMuted(bounded === 0);
+    if (androidBridge()) sendAndroidPlayback({ action: 'volume', value: bounded });
 
     if (audioRef.current) {
       audioRef.current.volume = bounded;
@@ -614,6 +795,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleMute = () => {
+    if (androidBridge()) sendAndroidPlayback({ action: 'volume', value: isMuted ? volume || 0.8 : 0 });
     if (isMuted) {
       const targetVol = volume || 0.8;
       if (audioRef.current) audioRef.current.volume = targetVol;
@@ -631,37 +813,28 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleShuffle = () => {
-    setIsShuffle((prev) => !prev);
+    setIsShuffle(!isShuffle);
+    if (androidBridge()) sendAndroidPlayback({ action: 'shuffle', enabled: !isShuffle });
   };
 
   const cycleRepeatMode = () => {
-    setRepeatMode((prev) => {
-      if (prev === 'off') return 'all';
-      if (prev === 'all') return 'one';
-      return 'off';
-    });
+    const mode = repeatMode === 'off' ? 'all' : repeatMode === 'all' ? 'one' : 'off';
+    setRepeatMode(mode);
+    if (androidBridge()) sendAndroidPlayback({ action: 'repeat', mode });
   };
 
-  const addToQueue = (song: Song) => {
-    setQueue((prev) => {
-      const updated = [...prev, song];
-      saveStoredQueue(updated);
-      return updated;
-    });
+  const updateQueue = (songs: Song[]) => {
+    queueRef.current = songs;
+    setQueue(songs);
+    saveStoredQueue(songs);
+    if (nativeActiveRef.current && !nativePendingIdRef.current && currentSongRef.current) {
+      refreshNativeQueue(currentSongRef.current.id, songs);
+    }
   };
 
-  const removeFromQueue = (index: number) => {
-    setQueue((prev) => {
-      const updated = prev.filter((_, i) => i !== index);
-      saveStoredQueue(updated);
-      return updated;
-    });
-  };
-
-  const clearQueue = () => {
-    setQueue([]);
-    saveStoredQueue([]);
-  };
+  const addToQueue = (song: Song) => updateQueue([...queueRef.current, song]);
+  const removeFromQueue = (index: number) => updateQueue(queueRef.current.filter((_, i) => i !== index));
+  const clearQueue = () => updateQueue([]);
 
   const clearHistory = useCallback(() => {
     clearStoredRecentlyPlayed();
@@ -675,6 +848,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const setPlaybackRate = (rate: number) => {
     setPlaybackRateState(rate);
+    if (androidBridge()) sendAndroidPlayback({ action: 'rate', value: rate });
     if (audioRef.current) {
       audioRef.current.playbackRate = rate;
     }
@@ -686,8 +860,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Global Keyboard Shortcuts (Space for Play/Pause, KeyM for Mute, Arrow Keys for Seek)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+  const onKeyboardShortcut = useEffectEvent((e: KeyboardEvent) => {
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
       if (activeTag === 'input' || activeTag === 'textarea') return;
 
@@ -704,11 +877,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         e.preventDefault();
         seekTo(Math.max(0, currentTime - 5));
       }
-    };
-
+  });
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => onKeyboardShortcut(e);
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlay, toggleMute, currentTime, duration]);
+  }, []);
 
   return (
     <AudioContext.Provider
