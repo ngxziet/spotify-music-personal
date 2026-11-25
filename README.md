@@ -19,6 +19,7 @@
 
 ### 2. 🔍 Tìm Kiếm Nhạc Trực Tuyến & Tuyển Chọn
 - **Kho nhạc** tìm bài đầy đủ trên Audius và bổ sung nhạc có giấy phép mở từ Openverse và Internet Archive Netlabels. Trang tìm kiếm cũng tra file đã tải và nhạc cá nhân trên máy.
+- **Tìm trên Spotify** mở từ khóa đang nhập trong Spotify để phát bằng trình phát Spotify.
 - Tích hợp kho nhạc tuyển chọn sẵn có (Chill Lofi, Acoustic, Pop, EDM, Piano, Focus).
 - Lọc theo thể loại: V-Pop, Pop, Lofi, EDM, Piano, Acoustic, Rock.
 
