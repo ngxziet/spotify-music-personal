@@ -24,7 +24,7 @@ export default function HistoryPage() {
     history,
     currentSong,
     isPlaying,
-    playSong,
+    playCollection,
     togglePlay,
     isShuffle,
     toggleShuffle,
@@ -57,7 +57,7 @@ export default function HistoryPage() {
     if (isHistoryPlaying) {
       togglePlay();
     } else if (filteredHistory.length > 0) {
-      playSong(filteredHistory[0], filteredHistory);
+      playCollection(filteredHistory);
     }
   };
 

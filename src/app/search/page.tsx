@@ -2,12 +2,13 @@
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search as SearchIcon, X, Music, Loader2, Play, Headphones } from 'lucide-react';
+import { Search as SearchIcon, X, Music, Loader2, Play } from 'lucide-react';
 import { Song } from '@/types';
 import { CURATED_SONGS, GENRES } from '@/data/mockData';
 import { SongRow } from '@/components/cards/SongRow';
 import { useAudio } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
+import { isPlayableSong } from '@/utils/audioSource';
 import { SafeImage as Image } from '@/components/ui/SafeImage';
 
 export default function SearchPage() {
@@ -21,51 +22,39 @@ export default function SearchPage() {
 function SearchFromUrl() {
   const params = useSearchParams();
   const query = params.get('q') ?? '';
-  const backgroundOnly = params.get('source') === 'audio';
-  return (
-    <SearchContent
-      key={params.toString()}
-      initialQuery={query}
-      initialBackgroundOnly={backgroundOnly}
-    />
-  );
+  return <SearchContent key={query} initialQuery={query} />;
 }
 
-function SearchContent({ initialQuery, initialBackgroundOnly }: {
-  initialQuery: string;
-  initialBackgroundOnly: boolean;
-}) {
+function SearchContent({ initialQuery }: { initialQuery: string }) {
   const [query, setQuery] = useState(initialQuery);
-  const [backgroundOnly, setBackgroundOnly] = useState(initialBackgroundOnly);
   const [searchResult, setSearchResult] = useState<{ url: string; songs: Song[]; failed?: boolean } | null>(null);
   const [selectedGenre, setSelectedGenre] = useState('all');
   const { playSong } = useAudio();
   const { offlineSongs, uploadedSongs } = useLibrary();
   const searchTerm = query.trim();
-  const requestUrl = searchTerm
-    ? `/api/search?q=${encodeURIComponent(searchTerm)}${backgroundOnly ? '&source=audio' : ''}`
-    : '';
+  const catalogQuery = searchTerm || (selectedGenre === 'all' ? '' : selectedGenre === 'vpop' ? 'V-Pop' : selectedGenre);
+  const requestUrl = catalogQuery ? '/api/search?q=' + encodeURIComponent(catalogQuery) : '/api/search';
   const activeResult = searchResult?.url === requestUrl ? searchResult : null;
-  const isLoading = Boolean(requestUrl && !activeResult);
+  const isLoading = !activeResult;
   const localMatches = useMemo(() => {
-    if (!backgroundOnly || !searchTerm) return new Map<string, Song>();
+    if (!searchTerm) return new Map<string, Song>();
     const term = searchTerm.toLowerCase();
     const songs = [...offlineSongs, ...uploadedSongs].filter((song) =>
-      song.audioUrl && !song.youtubeId && song.isFullTrack !== false &&
+      isPlayableSong(song) &&
       [song.title, song.artist, `${song.title} ${song.artist}`].some((item) => item.toLowerCase().includes(term))
     );
     return new Map(songs.map((song) => [song.id, song]));
-  }, [backgroundOnly, offlineSongs, searchTerm, uploadedSongs]);
+  }, [offlineSongs, searchTerm, uploadedSongs]);
   const genreMatches = selectedGenre === 'all'
     ? CURATED_SONGS
     : CURATED_SONGS.filter((song) => song.category?.toLowerCase().includes(selectedGenre.toLowerCase()));
+  const onlineSongs = activeResult?.songs.filter(isPlayableSong);
   const results = searchTerm
-    ? [...localMatches.values(), ...(activeResult?.songs ?? []).filter((song) => !localMatches.has(song.id))]
-    : genreMatches.length ? genreMatches : CURATED_SONGS;
+    ? [...localMatches.values(), ...(onlineSongs ?? []).filter((song) => !localMatches.has(song.id))]
+    : onlineSongs?.length ? onlineSongs : genreMatches.length ? genreMatches : CURATED_SONGS;
 
   // Search effect with debounce
   useEffect(() => {
-    if (!requestUrl) return;
     const controller = new AbortController();
     const handler = setTimeout(async () => {
       try {
@@ -75,12 +64,12 @@ function SearchContent({ initialQuery, initialBackgroundOnly }: {
         if (!res.ok) throw new Error('Search request failed');
         const data = await res.json();
         if (!controller.signal.aborted) {
-          setSearchResult({ url: requestUrl, songs: data.songs || [], failed: data.offline === true });
+          setSearchResult({ url: requestUrl, songs: data.songs || [], failed: data.offline === true || data.catalogUnavailable === true });
         }
       } catch {
         if (!controller.signal.aborted) setSearchResult({ url: requestUrl, songs: [], failed: true });
       }
-    }, initialQuery.trim() === searchTerm ? 0 : 400);
+    }, !searchTerm || initialQuery.trim() === searchTerm ? 0 : 400);
 
     return () => {
       clearTimeout(handler);
@@ -120,19 +109,9 @@ function SearchContent({ initialQuery, initialBackgroundOnly }: {
         </div>
       </div>
 
-      <button
-        type="button"
-        aria-pressed={backgroundOnly}
-        onClick={() => setBackgroundOnly(!backgroundOnly)}
-        className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-xs font-semibold transition-colors ${
-          backgroundOnly
-            ? 'border-[#1ed760]/50 bg-[#1ed760]/15 text-[#1ed760]'
-            : 'border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-        }`}
-      >
-        <Headphones className="h-4 w-4" aria-hidden="true" />
-        Nghe khi khóa màn hình
-      </button>
+      <p className="text-xs text-zinc-300">
+        Tìm bản đầy đủ từ Audius, Openverse, Internet Archive và thư viện trên máy.
+      </p>
 
       {/* Genre Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -162,7 +141,7 @@ function SearchContent({ initialQuery, initialBackgroundOnly }: {
           ) : query ? (
             <span>Kết quả cho &quot;{query}&quot; ({results.length})</span>
           ) : (
-            <span>Khám Phá Bài Hát</span>
+            <span>{selectedGenre === 'all' ? 'Kho nhạc Audius' : 'Khám phá theo thể loại'}</span>
           )}
         </h2>
       </div>
@@ -174,7 +153,7 @@ function SearchContent({ initialQuery, initialBackgroundOnly }: {
           <p className="text-base font-semibold text-white">
             {activeResult?.failed
               ? 'Tìm kiếm trực tuyến đang gián đoạn'
-              : backgroundOnly ? 'Chưa tìm thấy bản đầy đủ hỗ trợ nghe nền' : 'Không tìm thấy kết quả phù hợp'}
+              : 'Chưa tìm thấy bản đầy đủ phù hợp'}
           </p>
           <p className="text-xs max-w-sm mx-auto">
             Thử tìm theo tên bài, tên nghệ sĩ hoặc tải file nhạc từ máy của bạn lên.
@@ -203,7 +182,7 @@ function SearchContent({ initialQuery, initialBackgroundOnly }: {
                     {topResult.title}
                   </h4>
                   <p className="text-sm text-zinc-400">
-                    <span className="font-semibold text-zinc-200">{topResult.artist}</span> • {topResult.youtubeId ? 'YouTube' : 'Bài hát'}
+                    <span className="font-semibold text-zinc-200">{topResult.artist}</span>
                   </p>
                 </div>
 

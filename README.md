@@ -18,7 +18,7 @@
 - **Hẹn giờ tắt nhạc (Sleep Timer):** Tự động dừng nhạc sau 15p, 30p, 45p, 60p.
 
 ### 2. 🔍 Tìm Kiếm Nhạc Trực Tuyến & Tuyển Chọn
-- Tìm kiếm nhanh hàng triệu bài hát và nghệ sĩ toàn cầu thông qua **iTunes Search API**.
+- **Kho nhạc** tìm bài đầy đủ trên Audius và bổ sung nhạc có giấy phép mở từ Openverse và Internet Archive Netlabels. Trang tìm kiếm cũng tra file đã tải và nhạc cá nhân trên máy.
 - Tích hợp kho nhạc tuyển chọn sẵn có (Chill Lofi, Acoustic, Pop, EDM, Piano, Focus).
 - Lọc theo thể loại: V-Pop, Pop, Lofi, EDM, Piano, Acoustic, Rock.
 
@@ -49,7 +49,7 @@
 
 - **Framework:** Next.js 16 (App Router, Turbopack)
 - **UI & Styling:** Tailwind CSS v4, Lucide React Icons, Canvas Confetti
-- **Audio Engine:** HTML5 Audio API + MediaSession API (hỗ trợ điều khiển từ màn hình khóa, bàn phím)
+- **Phát nhạc** dùng HTML5 Audio và Media Session trên web, Android Media3 trong bản APK.
 - **Storage:** LocalStorage + IndexedDB (Local-First Architecture)
 - **CI/CD & Hosting:** GitHub + Vercel
 
@@ -86,8 +86,8 @@ Vercel tự build và cập nhật bản production sau khi nhận thay đổi t
 
 ## SoundWave cho Android
 
-- Tải `SoundWave.apk` từ [GitHub Releases](https://github.com/ngxziet/spotify-music-personal/releases/latest). Mở file trên Android và cho phép ứng dụng đang mở file cài APK nếu máy hỏi.
-- Android Media3 quản lý nhạc MP3, nguồn phát trực tiếp và các bài đã tải để chúng có thể tiếp tục phát và chuyển bài khi khóa màn hình. Các bài nhúng YouTube tạm dừng khi rời ứng dụng.
+- [Tải SoundWave.apk mới nhất](https://github.com/ngxziet/spotify-music-personal/releases/latest/download/SoundWave.apk). Mở file trên Android và cho phép ứng dụng đang mở file cài APK nếu máy hỏi.
+- Android Media3 tiếp tục phát và chuyển bài khi khóa màn hình với nhạc từ kho trực tuyến, bài đã tải và file cá nhân. Bài lưu từ nguồn cũ có thể chọn lại để tìm bản audio thay thế.
 - Giao diện và API dùng bản production trên Vercel. App nhận giao diện mới khi mở lại hoặc khi phát hiện bản mới trong lúc đang rảnh và có mạng. Lần mở đầu tiên cần kết nối mạng.
-- Khi có thay đổi trong `android/` trên nhánh `master`, [GitHub Actions](https://github.com/ngxziet/spotify-music-personal/actions/workflows/android.yml) ký và đăng APK mới. Bản APK mới cài đè bằng cùng chữ ký để giữ thư viện trên máy. Android yêu cầu xác nhận cài APK mới.
+- Khi có thay đổi trong `android/` hoặc trong cấu hình phát hành APK trên nhánh `master`, GitHub Actions tự ký và đăng APK mới. Android yêu cầu xác nhận khi cài đè. Bản cập nhật dùng cùng chữ ký để giữ thư viện trên máy. [Workflow phát hành APK](https://github.com/ngxziet/spotify-music-personal/actions/workflows/android.yml)
 - Workflow dùng hai GitHub Secrets `SOUNDWAVE_KEYSTORE_BASE64` và `SOUNDWAVE_KEYSTORE_PASSWORD`. Giữ bản sao riêng của khóa ký để có thể phát hành bản cập nhật về sau.

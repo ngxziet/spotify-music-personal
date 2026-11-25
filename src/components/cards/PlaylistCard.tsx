@@ -12,7 +12,7 @@ interface PlaylistCardProps {
 }
 
 export function PlaylistCard({ playlist }: PlaylistCardProps) {
-  const { currentSong, isPlaying, playSong, togglePlay } = useAudio();
+  const { currentSong, isPlaying, playCollection, togglePlay } = useAudio();
 
   const isCurrentPlaylist = playlist.songs.some((s) => s.id === currentSong?.id);
 
@@ -22,7 +22,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
     if (isCurrentPlaylist) {
       togglePlay();
     } else if (playlist.songs.length > 0) {
-      playSong(playlist.songs[0], playlist.songs);
+      playCollection(playlist.songs);
     }
   };
 

@@ -1,5 +1,6 @@
 import { Song, Playlist, UserProfile } from '@/types';
 import { CURATED_PLAYLISTS } from '@/data/mockData';
+import { isPlayableSong, songAudioUrl } from './audioSource';
 
 const DB_NAME = 'SpotifyCloneDB';
 const DB_VERSION = 1;
@@ -42,11 +43,11 @@ export function getCachedOfflineUrl(songId: string): string | undefined {
 // Save song audio blob for offline listening
 export async function saveSongOffline(song: Song): Promise<boolean> {
   try {
-    if (!song.audioUrl || song.audioUrl.trim() === '') {
+    if (!isPlayableSong(song)) {
       return false;
     }
 
-    const res = await fetch(song.audioUrl);
+    const res = await fetch(songAudioUrl(song));
     if (!res.ok) return false;
 
     const blob = await res.blob();
@@ -107,6 +108,7 @@ export async function getOfflineSongs(): Promise<Song[]> {
             isDownloaded: true,
             downloadedAt: r.downloadedAt,
             source: r.source,
+            attribution: r.attribution,
             isFullTrack: r.isFullTrack,
           };
         });
@@ -188,11 +190,11 @@ export async function isSongDownloaded(songId: string): Promise<boolean> {
 
 // Trigger direct browser download of song audio file
 export async function triggerBrowserDownload(song: Song): Promise<boolean> {
-  if (!song.audioUrl || song.audioUrl.trim() === '') {
+  if (!isPlayableSong(song)) {
     return false;
   }
   try {
-    const res = await fetch(song.audioUrl);
+    const res = await fetch(songAudioUrl(song));
     if (!res.ok) return false;
     const blob = await res.blob();
     if (!blob || blob.size === 0 || blob.type.includes('text/html')) {
@@ -211,7 +213,7 @@ export async function triggerBrowserDownload(song: Song): Promise<boolean> {
     return true;
   } catch (err) {
     console.error('Download failed, opening direct stream:', err);
-    window.open(song.audioUrl, '_blank');
+    window.open(songAudioUrl(song), '_blank');
     return true;
   }
 }
@@ -405,6 +407,7 @@ export function saveStoredLastPlayed(song: Song, currentTime: number = 0, wasPla
       isLocal: !!song.isLocal,
       isDownloaded: !!song.isDownloaded,
       source: song.source || 'curated',
+      attribution: song.attribution,
       isFullTrack: !!song.isFullTrack,
       youtubeId: song.youtubeId || '',
       playedAt: song.playedAt || new Date().toISOString(),
@@ -447,6 +450,7 @@ export function saveStoredQueue(queue: Song[]) {
       coverUrl: s.coverUrl || '',
       category: s.category || '',
       source: s.source || 'curated',
+      attribution: s.attribution,
       isFullTrack: !!s.isFullTrack,
       youtubeId: s.youtubeId || '',
     }));

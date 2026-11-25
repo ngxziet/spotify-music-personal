@@ -11,7 +11,7 @@ import Link from 'next/link';
 
 export default function LikedSongsPage() {
   const { likedSongIds, offlineSongs, uploadedSongs } = useLibrary();
-  const { currentSong, isPlaying, playSong, togglePlay, isShuffle, toggleShuffle } = useAudio();
+  const { currentSong, isPlaying, playCollection, togglePlay, isShuffle, toggleShuffle } = useAudio();
 
   // Combine all known song pools to find liked ones
   const allSongPool = [...CURATED_SONGS, ...offlineSongs, ...uploadedSongs];
@@ -34,7 +34,7 @@ export default function LikedSongsPage() {
     if (isLikedPlaying) {
       togglePlay();
     } else if (uniqueLikedSongs.length > 0) {
-      playSong(uniqueLikedSongs[0], uniqueLikedSongs);
+      playCollection(uniqueLikedSongs);
     }
   };
 

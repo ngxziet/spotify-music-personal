@@ -70,10 +70,6 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (currentSong.youtubeId && !currentSong.audioUrl) {
-      showToast('Nhạc từ YouTube chỉ phát trực tuyến. Hãy chọn bài Full Track (Curated/Audius) để tải offline.', 'warning');
-      return;
-    }
     setIsDownloading(true);
     const ok = await downloadSong(currentSong, true);
     setIsDownloading(false);

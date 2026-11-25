@@ -37,6 +37,9 @@ export default function HomePage() {
             <span>{greeting}</span>
             <Sparkles className="w-5 h-5 text-amber-400" />
           </h1>
+          <Link href="/search" className="shrink-0 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10">
+            Kho nhạc
+          </Link>
         </div>
 
         {/* Top 6 Quick Cards Grid */}

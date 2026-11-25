@@ -25,7 +25,7 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
   const playlistId = resolvedParams.id;
 
   const { playlists, removeSongFromPlaylist, deletePlaylist, downloadSong } = useLibrary();
-  const { currentSong, isPlaying, playSong, togglePlay, isShuffle, toggleShuffle } = useAudio();
+  const { currentSong, isPlaying, playCollection, togglePlay, isShuffle, toggleShuffle } = useAudio();
   const { showToast } = usePwa();
 
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
@@ -57,7 +57,7 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
     if (isThisPlaylistPlaying) {
       togglePlay();
     } else if (playlist.songs.length > 0) {
-      playSong(playlist.songs[0], playlist.songs);
+      playCollection(playlist.songs);
     }
   };
 

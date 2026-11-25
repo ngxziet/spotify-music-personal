@@ -6,6 +6,7 @@ import { useAudio } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
 import { usePwa } from '@/context/PwaContext';
 import { formatTime } from '@/utils/format';
+import { isPlayableSong } from '@/utils/audioSource';
 import { Play, Pause, Heart, Download, Plus, Check, Trash2, Music2 } from 'lucide-react';
 import { SafeImage as Image } from '@/components/ui/SafeImage';
 
@@ -27,6 +28,7 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
 
   const isCurrent = currentSong?.id === song.id;
   const isLiked = isSongLiked(song.id);
+  const isPlayable = isPlayableSong(song);
   const isOfflineReady = isSongOffline(song.id) || !!song.isLocal || !!song.isDownloaded;
 
   const handleRowClick = () => {
@@ -39,10 +41,6 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (song.youtubeId && !song.audioUrl) {
-      showToast('Nhạc từ YouTube chỉ phát trực tuyến. Chọn bài Full Track (Curated/Audius) hoặc tải MP3 lên để lưu offline.', 'warning');
-      return;
-    }
     setIsDownloading(true);
     const success = await downloadSong(song, true);
     setIsDownloading(false);
@@ -111,19 +109,14 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
                 Local MP3
               </span>
             )}
-            {song.source === 'itunes' && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-medium" title="Bản nghe thử 30s từ Apple iTunes">
-                Preview 30s
+            {!isPlayable && (
+              <span className="ml-1.5 text-[10px] text-zinc-400">
+                Nguồn cũ · chạm để tìm bản audio
               </span>
             )}
-            {song.youtubeId && (
-              <span className="ml-1.5 text-[10px] text-zinc-400" title="Tạm dừng khi khóa màn hình">
-                YouTube
-              </span>
-            )}
-            {!song.youtubeId && (song.source === 'audius' || song.source === 'curated' || song.isFullTrack) && !song.isLocal && (
+            {isPlayable && !song.isLocal && (song.source === 'audius' || song.source === 'curated' || song.isFullTrack) && (
               <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-[#1ed760]/20 text-[#1ed760] font-medium" title="Bản nhạc đầy đủ">
-                Full Track
+                {song.source === 'audius' ? 'Audius' : song.source === 'openverse' ? 'Openverse' : song.source === 'archive' ? 'Internet Archive' : 'Bản đầy đủ'}
               </span>
             )}
           </p>
@@ -154,7 +147,7 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
         </button>
 
         {/* Download / Offline Button */}
-        <button
+        {isPlayable && <button
           onClick={handleDownload}
           disabled={isDownloading}
           className={`p-1.5 rounded-full transition-opacity ${
@@ -170,7 +163,7 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
           ) : (
             <Download className={`w-4 h-4 ${isDownloading ? 'animate-bounce text-[#1ed760]' : ''}`} />
           )}
-        </button>
+        </button>}
 
         {/* Add to Playlist Dropdown */}
         <div className="relative">

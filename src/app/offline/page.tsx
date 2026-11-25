@@ -18,7 +18,7 @@ function formatBytes(bytes: number): string {
 
 export default function OfflineSongsPage() {
   const { offlineSongs, deleteOfflineSong } = useLibrary();
-  const { currentSong, isPlaying, playSong, togglePlay, isShuffle, toggleShuffle } = useAudio();
+  const { currentSong, isPlaying, playCollection, togglePlay, isShuffle, toggleShuffle } = useAudio();
   const { isStandalone, promptInstall } = usePwa();
   const [storageInfo, setStorageInfo] = useState<{ usage: number; quota: number } | null>(null);
 
@@ -44,7 +44,7 @@ export default function OfflineSongsPage() {
     if (isOfflinePlaying) {
       togglePlay();
     } else if (offlineSongs.length > 0) {
-      playSong(offlineSongs[0], offlineSongs);
+      playCollection(offlineSongs);
     }
   };
 

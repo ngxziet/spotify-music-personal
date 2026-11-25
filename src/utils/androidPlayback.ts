@@ -1,4 +1,5 @@
 import type { Song } from '@/types';
+import { isPlayableSong, songAudioUrl } from './audioSource';
 import { getCachedOfflineUrl, getOfflineBlobUrl, getUploadedSongs } from '@/utils/storage';
 
 interface AndroidTrack {
@@ -77,19 +78,21 @@ async function transferAudioFile(url: string) {
 }
 
 export function directAndroidTrack(song: Song): AndroidTrack | undefined {
-  if (song.youtubeId || !song.audioUrl?.startsWith('https://')) return;
+  if (!isPlayableSong(song)) return;
+  const url = songAudioUrl(song);
+  if (!url.startsWith('https://')) return;
   return {
     id: song.id,
     title: song.title,
     artist: song.artist,
     album: song.album,
     artwork: song.coverUrl,
-    url: song.audioUrl,
+    url,
   };
 }
 
 export async function prepareAndroidTrack(song: Song): Promise<AndroidTrack | undefined> {
-  if (song.youtubeId) return;
+  if (!isPlayableSong(song)) return;
   let url = getCachedOfflineUrl(song.id);
   if (!url && (song.isDownloaded || song.audioUrl?.startsWith('blob:'))) {
     url = await getOfflineBlobUrl(song.id) || undefined;

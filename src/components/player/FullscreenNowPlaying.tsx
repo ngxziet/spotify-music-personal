@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useAudio, useAudioPosition } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
 import { usePwa } from '@/context/PwaContext';
@@ -20,8 +19,6 @@ import {
   ListMusic,
   Clock,
   Check,
-  Headphones,
-  ExternalLink,
 } from 'lucide-react';
 import { SafeImage as Image } from '@/components/ui/SafeImage';
 
@@ -38,7 +35,6 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
     repeatMode,
     playbackRate,
     isNowPlayingOpen,
-    youTubeNotice,
     setIsNowPlayingOpen,
     togglePlay,
     playNext,
@@ -62,15 +58,9 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
   const isLiked = isSongLiked(currentSong.id);
   const isOfflineReady = isSongOffline(currentSong.id) || !!currentSong.isLocal || !!currentSong.isDownloaded;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const youtubeParams = currentSong.youtubeId
-    ? new URLSearchParams({ v: currentSong.youtubeId, t: String(Math.floor(currentTime)) })
-    : null;
+  const attribution = currentSong.attribution;
 
   const handleDownload = async () => {
-    if (currentSong.youtubeId && !currentSong.audioUrl) {
-      showToast('Nhạc từ YouTube chỉ phát trực tuyến. Hãy chọn bài Full Track (Curated/Audius) để tải offline.', 'warning');
-      return;
-    }
     setIsDownloading(true);
     const ok = await downloadSong(currentSong, true);
     setIsDownloading(false);
@@ -135,29 +125,24 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
         </button>
       </div>
 
-      {currentSong.youtubeId ? (
-        <div className="relative z-10 mx-auto my-3 w-full max-w-xl shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black">
-          <div id="soundwave-youtube-player" className="h-[clamp(200px,54vw,320px)] w-full" />
+      {/* Main Cover Artwork */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-3 sm:my-6 min-h-0">
+        <div className="relative aspect-square w-full max-w-[260px] xs:max-w-[290px] sm:max-w-sm max-h-[38vh] sm:max-h-[46vh] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 group">
+          <Image
+            src={currentSong.coverUrl}
+            alt={currentSong.title}
+            fill
+            className="object-cover"
+            priority
+          />
+          {isPlaying && (
+            <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow">
+              <span className="w-2 h-2 rounded-full bg-[#1ed760] animate-ping"></span>
+              <span className="text-[10px] font-bold text-[#1ed760] uppercase">Playing</span>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-3 sm:my-6 min-h-0">
-          <div className="relative aspect-square w-full max-w-[260px] xs:max-w-[290px] sm:max-w-sm max-h-[38vh] sm:max-h-[46vh] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 group">
-            <Image
-              src={currentSong.coverUrl}
-              alt={currentSong.title}
-              fill
-              className="object-cover"
-              priority
-            />
-            {isPlaying && (
-              <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow">
-                <span className="w-2 h-2 rounded-full bg-[#1ed760] animate-ping"></span>
-                <span className="text-[10px] font-bold text-[#1ed760] uppercase">Playing</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Song Info & Actions */}
       <div className="relative z-10 max-w-md mx-auto w-full space-y-4">
@@ -205,29 +190,12 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
           </div>
         </div>
 
-        {youtubeParams && (
-          <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
-            <p className="text-xs text-zinc-300" role="status">
-              {youTubeNotice ?? 'Video YouTube tạm dừng khi thu nhỏ trình phát hoặc khóa màn hình.'}
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Link
-                href={`/search?${new URLSearchParams({ q: currentSong.title, source: 'audio' })}`}
-                onClick={() => setIsNowPlayingOpen(false)}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#1ed760] px-3 text-xs font-bold text-black hover:bg-[#1fdf64]"
-              >
-                <Headphones className="h-3.5 w-3.5" aria-hidden="true" />
-                Tìm bản nghe nền
-              </Link>
-              <a
-                href={`https://www.youtube.com/watch?${youtubeParams}`}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/20 px-3 text-xs font-semibold text-white hover:bg-white/10"
-              >
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                Mở YouTube
-              </a>
-            </div>
-            <p className="mt-1 text-[11px] text-zinc-400">Phát nền trong app YouTube cần Premium.</p>
+        {attribution?.sourceUrl?.startsWith('https://') && attribution.licenseUrl?.startsWith('https://creativecommons.org/') && (
+          <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+            <a href={attribution.sourceUrl} className="underline hover:text-white">Nguồn bản nhạc</a>
+            <a href={attribution.licenseUrl} className="underline hover:text-white">
+              Giấy phép {attribution.licenseName}
+            </a>
           </div>
         )}
 
