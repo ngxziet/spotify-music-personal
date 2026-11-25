@@ -176,7 +176,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const downloadSong = useCallback(async (song: Song, directFileDownload: boolean = false): Promise<boolean> => {
-    if (!song.audioUrl || song.audioUrl.trim() === '') {
+    if (song.isLive || !song.audioUrl || song.audioUrl.trim() === '') {
       return false;
     }
     const success = await saveSongOffline(song);

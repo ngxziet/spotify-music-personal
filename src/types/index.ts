@@ -11,13 +11,14 @@ export interface Song {
   isLocal?: boolean;
   isDownloaded?: boolean;
   downloadedAt?: string;
-  source?: 'curated' | 'audius' | 'openverse' | 'archive' | 'dogmazic' | 'fma' | 'youtube' | 'itunes' | 'local';
+  source?: 'curated' | 'audius' | 'openverse' | 'archive' | 'dogmazic' | 'fma' | 'wikimedia' | 'radio' | 'podcast' | 'youtube' | 'itunes' | 'local';
   attribution?: {
     sourceUrl: string;
     licenseUrl: string;
     licenseName: string;
   };
   isFullTrack?: boolean;
+  isLive?: boolean;
   youtubeId?: string;
   playedAt?: string;
 }

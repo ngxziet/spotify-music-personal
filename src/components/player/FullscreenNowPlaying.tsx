@@ -169,24 +169,26 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
               />
             </button>
 
-            <button
-              onClick={handleDownload}
-              disabled={isDownloading}
-              className={`p-2 rounded-full transition-colors ${
-                downloadSuccess || isOfflineReady ? 'text-[#1ed760]' : 'text-zinc-400 hover:text-white'
-              }`}
-              title={isOfflineReady ? 'Đã lưu Offline (Nhấn để tải .mp3)' : 'Tải MP3 về máy & lưu Offline'}
-            >
-              {downloadSuccess || isOfflineReady ? (
-                <Check className="w-6 h-6 text-[#1ed760]" />
-              ) : (
-                <Download
-                  className={`w-6 h-6 ${
-                    isDownloading ? 'animate-bounce text-[#1ed760]' : ''
-                  }`}
-                />
-              )}
-            </button>
+            {!currentSong.isLive && (
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className={`p-2 rounded-full transition-colors ${
+                  downloadSuccess || isOfflineReady ? 'text-[#1ed760]' : 'text-zinc-400 hover:text-white'
+                }`}
+                title={isOfflineReady ? 'Đã lưu Offline (Nhấn để tải .mp3)' : 'Tải MP3 về máy & lưu Offline'}
+              >
+                {downloadSuccess || isOfflineReady ? (
+                  <Check className="w-6 h-6 text-[#1ed760]" />
+                ) : (
+                  <Download
+                    className={`w-6 h-6 ${
+                      isDownloading ? 'animate-bounce text-[#1ed760]' : ''
+                    }`}
+                  />
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -206,9 +208,10 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
               type="range"
               min="0"
               max={duration || 100}
-              value={currentTime}
+              value={currentSong.isLive ? 0 : currentTime}
+              disabled={Boolean(currentSong.isLive)}
               onChange={handleSeek}
-              className="w-full h-1.5 bg-zinc-700/60 rounded-lg cursor-pointer accent-[#1ed760]"
+              className="w-full h-1.5 bg-zinc-700/60 rounded-lg cursor-pointer accent-[#1ed760] disabled:cursor-default"
               style={{
                 background: `linear-gradient(to right, #1ed760 ${progressPercent}%, rgba(255,255,255,0.2) ${progressPercent}%)`,
               }}
@@ -216,7 +219,7 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
           </div>
           <div className="flex justify-between text-xs text-zinc-400 font-mono">
             <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+            <span>{currentSong.isLive ? 'LIVE' : formatTime(duration)}</span>
           </div>
         </div>
 

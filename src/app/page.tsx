@@ -1,29 +1,54 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CURATED_SONGS, CURATED_PLAYLISTS } from '@/data/mockData';
+import { CURATED_SONGS, CURATED_PLAYLISTS, GENRES } from '@/data/mockData';
 import { useLibrary } from '@/context/LibraryContext';
 import { useAudio } from '@/context/AudioContext';
 import { PlaylistCard } from '@/components/cards/PlaylistCard';
 import { SongRow } from '@/components/cards/SongRow';
-import { Heart, Play, Pause, Sparkles, Flame, Headphones, Clock, History, ArrowRight } from 'lucide-react';
+import { Heart, Play, Pause, Sparkles, Flame, Headphones, Clock, History, ArrowRight, Radio, Compass } from 'lucide-react';
 import { SafeImage as Image } from '@/components/ui/SafeImage';
 import { formatRelativeTime } from '@/utils/format';
+import type { Playlist, Song } from '@/types';
 import Link from 'next/link';
 
 export default function HomePage() {
   const { playlists, likedSongIds } = useLibrary();
   const { currentSong, isPlaying, playSong, togglePlay, history } = useAudio();
   const [greeting, setGreeting] = useState('Xin chào');
+  const [liveTrending, setLiveTrending] = useState<Song[]>([]);
+  const [livePlaylists, setLivePlaylists] = useState<Playlist[]>([]);
+  const [liveRadio, setLiveRadio] = useState<Song[]>([]);
 
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) setGreeting('Chào buổi sáng');
-    else if (hour >= 12 && hour < 18) setGreeting('Chào buổi chiều');
-    else setGreeting('Chào buổi tối');
+    queueMicrotask(() => {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) setGreeting('Chào buổi sáng');
+      else if (hour >= 12 && hour < 18) setGreeting('Chào buổi chiều');
+      else setGreeting('Chào buổi tối');
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/discover')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { trending?: Song[]; playlists?: Playlist[]; radio?: Song[] } | null) => {
+        if (cancelled || !data) return;
+        if (Array.isArray(data.trending)) setLiveTrending(data.trending);
+        if (Array.isArray(data.playlists)) setLivePlaylists(data.playlists);
+        if (Array.isArray(data.radio)) setLiveRadio(data.radio);
+      })
+      .catch(() => {
+        // Keep curated fallback on offline startup
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const likedCount = likedSongIds.length;
+  const trendingSongs = liveTrending.length > 0 ? liveTrending : CURATED_SONGS;
 
   return (
     <div className="relative min-h-full">
@@ -38,7 +63,7 @@ export default function HomePage() {
             <Sparkles className="w-5 h-5 text-amber-400" />
           </h1>
           <Link href="/search" className="shrink-0 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10">
-            Kho nhạc
+            Mở Kho Nhạc
           </Link>
         </div>
 
@@ -64,7 +89,7 @@ export default function HomePage() {
                 if (allLiked.length > 0) {
                   playSong(allLiked[0], allLiked);
                 } else {
-                  playSong(CURATED_SONGS[0], CURATED_SONGS);
+                  playSong(trendingSongs[0], trendingSongs);
                 }
               }}
               className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#1ed760] text-black opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-lg transition-all scale-95 group-hover:scale-100 flex-shrink-0 hover:scale-105 active:scale-90"
@@ -194,6 +219,80 @@ export default function HomePage() {
           </section>
         )}
 
+        {/* Section: Khám Phá Theo Thể Loại */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              <Compass className="w-5 h-5 text-[#1ed760]" />
+              Khám Phá Theo Thể Loại
+            </h2>
+            <Link href="/search" className="text-xs font-bold text-zinc-400 hover:text-white hover:underline">
+              Xem kho nhạc
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+            {GENRES.filter((g) => g.id !== 'all').map((genre) => (
+              <Link
+                key={genre.id}
+                href={`/search?genre=${encodeURIComponent(genre.id)}`}
+                className={`rounded-lg p-3.5 bg-gradient-to-br ${genre.color} hover:brightness-110 transition-all shadow-md font-bold text-xs sm:text-sm text-white truncate`}
+              >
+                {genre.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* Section: Thịnh Hành Toàn Cầu (Live Multi-Catalog Tracks) */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                <Flame className="w-5 h-5 text-rose-500" />
+                Thịnh Hành Hôm Nay
+              </h2>
+              <p className="text-xs text-zinc-400">
+                Tổng hợp từ Audius, Openverse / Jamendo và Free Music Archive
+              </p>
+            </div>
+            <Link href="/search" className="text-xs font-bold text-zinc-400 hover:text-white hover:underline">
+              Tìm thêm
+            </Link>
+          </div>
+
+          <div className="bg-black/20 rounded-xl p-2 md:p-3 border border-white/5 space-y-1">
+            {trendingSongs.slice(0, 12).map((song, idx) => (
+              <SongRow
+                key={song.id}
+                song={song}
+                index={idx}
+                playlistContext={trendingSongs}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Section: Playlist Thịnh Hành */}
+        {livePlaylists.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                  <Headphones className="w-5 h-5 text-[#1ed760]" />
+                  Playlist Thịnh Hành Toàn Cầu
+                </h2>
+                <p className="text-xs text-zinc-400">Các danh sách phát nổi bật từ Audius</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {livePlaylists.slice(0, 5).map((pl) => (
+                <PlaylistCard key={pl.id} playlist={pl} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Section: Tuyển Chọn Cho Bạn */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
@@ -202,7 +301,7 @@ export default function HomePage() {
                 <Headphones className="w-5 h-5 text-[#1ed760]" />
                 Dành Cho Bạn
               </h2>
-              <p className="text-xs text-zinc-400">Các danh sách phát thịnh hành được cá nhân hóa</p>
+              <p className="text-xs text-zinc-400">Các danh sách phát cá nhân và tuyển chọn</p>
             </div>
             <Link
               href="/library"
@@ -219,48 +318,37 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Section: Bài Hát Thịnh Hành Tuyển Chọn */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                <Flame className="w-5 h-5 text-rose-500" />
-                Thịnh Hành Hôm Nay
-              </h2>
-              <p className="text-xs text-zinc-400">Những bài hát có lượt nghe cao nhất</p>
+        {/* Section: Radio 24/7 Trực Tiếp */}
+        {liveRadio.length > 0 && (
+          <section className="space-y-4 pb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                  <Radio className="w-5 h-5 text-cyan-400" />
+                  Đài Radio Âm Nhạc 24/7
+                </h2>
+                <p className="text-xs text-zinc-400">Phát trực tiếp liên tục không giới hạn từ Radio Browser</p>
+              </div>
+              <Link
+                href="/search?source=radio"
+                className="text-xs font-bold text-zinc-400 hover:text-white hover:underline"
+              >
+                Xem tất cả đài
+              </Link>
             </div>
-          </div>
 
-          <div className="bg-black/20 rounded-xl p-2 md:p-3 border border-white/5 space-y-1">
-            {CURATED_SONGS.slice(0, 6).map((song, idx) => (
-              <SongRow
-                key={song.id}
-                song={song}
-                index={idx}
-                playlistContext={CURATED_SONGS}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Section: Chill & Focus */}
-        <section className="space-y-4 pb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                <Clock className="w-5 h-5 text-cyan-400" />
-                Tập Trung & Thư Giãn
-              </h2>
-              <p className="text-xs text-zinc-400">Giai điệu nhẹ nhàng đồng hành cùng bạn</p>
+            <div className="bg-black/20 rounded-xl p-2 md:p-3 border border-white/5 space-y-1">
+              {liveRadio.slice(0, 6).map((station, idx) => (
+                <SongRow
+                  key={station.id}
+                  song={station}
+                  index={idx}
+                  playlistContext={liveRadio}
+                />
+              ))}
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {CURATED_PLAYLISTS.slice(0, 4).map((pl) => (
-              <PlaylistCard key={`focus-${pl.id}`} playlist={pl} />
-            ))}
-          </div>
-        </section>
+          </section>
+        )}
       </div>
     </div>
   );

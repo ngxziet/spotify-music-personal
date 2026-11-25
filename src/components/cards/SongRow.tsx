@@ -24,6 +24,9 @@ const CATALOG_NAMES: Partial<Record<NonNullable<Song['source']>, string>> = {
   archive: 'Internet Archive',
   dogmazic: 'Dogmazic',
   fma: 'Free Music Archive',
+  wikimedia: 'Wikimedia',
+  radio: 'Radio 24/7',
+  podcast: 'Nhạc & Podcast VN',
 };
 
 export function SongRow({ song, index, playlistContext, showAlbum = true, onRemove }: SongRowProps) {
@@ -156,7 +159,7 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
         </button>
 
         {/* Download / Offline Button */}
-        {isPlayable && <button
+        {isPlayable && !song.isLive && <button
           onClick={handleDownload}
           disabled={isDownloading}
           className={`p-1.5 rounded-full transition-opacity ${
@@ -234,7 +237,11 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
 
         {/* Duration */}
         <span className="w-10 text-right text-xs text-zinc-400 font-mono">
-          {formatTime(song.duration)}
+          {song.isLive ? (
+            <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold">LIVE</span>
+          ) : (
+            formatTime(song.duration)
+          )}
         </span>
       </div>
     </div>

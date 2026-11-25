@@ -173,8 +173,12 @@ export const GENRES = [
   { id: 'pop', name: 'Pop & Thịnh Hành', color: 'from-pink-600 to-rose-800' },
   { id: 'lofi', name: 'Lofi & Chill', color: 'from-amber-600 to-orange-800' },
   { id: 'edm', name: 'EDM & Dance', color: 'from-purple-600 to-indigo-800' },
+  { id: 'hiphop', name: 'Hip-Hop & Rap', color: 'from-orange-600 to-red-800' },
   { id: 'piano', name: 'Piano & Cổ Điển', color: 'from-blue-600 to-cyan-800' },
   { id: 'acoustic', name: 'Acoustic & Indie', color: 'from-emerald-700 to-green-950' },
+  { id: 'jazz', name: 'Jazz & Soul', color: 'from-yellow-600 to-amber-800' },
+  { id: 'ambient', name: 'Ambient & Ngủ Ngon', color: 'from-indigo-700 to-slate-900' },
   { id: 'vpop', name: 'V-Pop Việt Nam', color: 'from-red-600 to-amber-700' },
-  { id: 'rock', name: 'Rock & Metal', color: 'from-zinc-700 to-zinc-950' }
+  { id: 'rock', name: 'Rock & Metal', color: 'from-zinc-700 to-zinc-950' },
+  { id: 'radio', name: 'Radio 24/7', color: 'from-cyan-600 to-blue-800' },
 ];

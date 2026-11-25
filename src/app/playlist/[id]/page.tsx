@@ -1,11 +1,12 @@
 'use client';
 
-import React, { use, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import { useLibrary } from '@/context/LibraryContext';
 import { useAudio } from '@/context/AudioContext';
 import { usePwa } from '@/context/PwaContext';
 import { SongRow } from '@/components/cards/SongRow';
 import { formatTime } from '@/utils/format';
+import type { Playlist } from '@/types';
 import {
   Play,
   Pause,
@@ -30,8 +31,36 @@ export default function PlaylistDetailPage({ params }: { params: Promise<{ id: s
 
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadAllSuccess, setDownloadAllSuccess] = useState(false);
+  const [remotePlaylist, setRemotePlaylist] = useState<{ id: string; data: Playlist | null } | null>(null);
 
-  const playlist = playlists.find((p) => p.id === playlistId);
+  const localPlaylist = playlists.find((p) => p.id === playlistId);
+  const isRemoteAudius = !localPlaylist && playlistId.startsWith('audius-pl-');
+
+  useEffect(() => {
+    if (!isRemoteAudius) return;
+    let cancelled = false;
+    fetch(`/api/playlist/${encodeURIComponent(playlistId)}`)
+      .then((res) => (res.ok ? res.json() : { playlist: null }))
+      .then((body: { playlist?: Playlist | null }) => {
+        if (!cancelled) setRemotePlaylist({ id: playlistId, data: body.playlist ?? null });
+      })
+      .catch(() => {
+        if (!cancelled) setRemotePlaylist({ id: playlistId, data: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isRemoteAudius, playlistId]);
+
+  const playlist = localPlaylist ?? (remotePlaylist?.id === playlistId ? remotePlaylist.data : null);
+
+  if (isRemoteAudius && remotePlaylist?.id !== playlistId) {
+    return (
+      <div className="p-8 text-center text-sm text-zinc-400">
+        Đang tải danh sách phát từ kho nhạc...
+      </div>
+    );
+  }
 
   if (!playlist) {
     return (

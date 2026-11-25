@@ -1,147 +1,215 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CURATED_SONGS } from '@/data/mockData';
 import type { Song } from '@/types';
-import { audiusStreamUrl } from '@/utils/audioSource';
 import { searchArchive } from './archive';
+import { searchAudius, searchAudiusMulti } from './audius';
 import { searchDogmazic } from './dogmazic';
+import { searchOpenverse } from './openverse';
+import { searchMusicPodcasts } from './podcasts';
+import { searchRadioStations } from './radio';
+import { searchWikimedia } from './wikimedia';
 
-type AudiusTrack = {
-  id?: string;
-  title?: string;
-  user?: { name?: string };
-  genre?: string;
-  duration?: number;
-  artwork?: { '480x480'?: string };
-  is_streamable?: boolean;
-  access?: { stream?: boolean };
+const GENRE_QUERY_MAP: Record<string, string> = {
+  pop: 'pop',
+  lofi: 'lofi',
+  edm: 'electronic',
+  piano: 'piano',
+  acoustic: 'acoustic',
+  vpop: 'vpop',
+  rock: 'rock',
+  jazz: 'jazz',
+  hiphop: 'hip hop',
+  ambient: 'ambient',
 };
 
-type OpenverseTrack = {
-  id: string;
-  title: string;
-  creator: string | null;
-  category: string;
-  duration: number | null;
-  filetype: string | null;
-  url: string;
-  foreign_landing_url: string;
-  license: string;
-  license_url: string;
-};
+const VPOP_AUDIUS_QUERIES = ['vpop', 'vinahouse', 'nhac viet', 'nhac hoa'];
 
-const FALLBACK_ARTWORK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
-const OPEN_LICENSES = new Set(['cc0', 'pdm', 'by', 'by-sa']);
-const AUDIO_FORMATS = new Set(['mp3', 'mp31', 'mp32', 'm4a', 'aac', 'ogg', 'opus', 'wav', 'flac']);
-
-async function getAudiusTracks(query: string): Promise<Song[] | null> {
-  const endpoint = query ? 'search' : 'trending';
-  const params = new URLSearchParams({ limit: '20', app_name: 'SoundWave' });
-  if (query) params.set('query', query);
-  else params.set('time', 'week');
-
-  try {
-    const response = await fetch(`https://api.audius.co/v1/tracks/${endpoint}?${params}`, {
-      headers: { Accept: 'application/json' },
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!response.ok) return null;
-    const { data } = await response.json() as { data?: AudiusTrack[] };
-    if (!Array.isArray(data)) return null;
-
-    return data
-      .filter((track): track is AudiusTrack & { id: string; title: string } =>
-        Boolean(track.id && track.title && track.is_streamable === true && track.access?.stream !== false)
-      )
-      .slice(0, 15)
-      .map((track) => ({
-        id: `audius-${track.id}`,
-        title: track.title,
-        artist: track.user?.name || 'Audius Artist',
-        album: track.genre || 'Single',
-        duration: track.duration || 180,
-        audioUrl: audiusStreamUrl(track.id),
-        coverUrl: track.artwork?.['480x480'] || FALLBACK_ARTWORK,
-        category: track.genre || 'Electronic',
-        source: 'audius',
-        isFullTrack: true,
-      }));
-  } catch {
-    return null;
+function interleaveGroups(groups: Song[][]): Song[] {
+  const result: Song[] = [];
+  const maxLen = groups.reduce((max, g) => Math.max(max, g.length), 0);
+  for (let i = 0; i < maxLen; i += 1) {
+    for (const group of groups) {
+      if (i < group.length) result.push(group[i]);
+    }
   }
-}
-
-async function getOpenverseTracks(query: string): Promise<Song[]> {
-  const params = new URLSearchParams({
-    q: query,
-    category: 'music',
-    license: [...OPEN_LICENSES].join(','),
-    page_size: '12',
-    filter_dead: 'true',
-  });
-  try {
-    const response = await fetch(`https://api.openverse.org/v1/audio/?${params}`, {
-      headers: { Accept: 'application/json' },
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(3000),
-    });
-    if (!response.ok) return [];
-    const { results } = await response.json() as { results?: OpenverseTrack[] };
-    if (!Array.isArray(results)) return [];
-
-    return results.flatMap((track): Song[] => {
-      const duration = Math.round((track.duration ?? 0) / 1000);
-      if (track.category !== 'music' || !track.id || !track.title || duration < 45
-        || !OPEN_LICENSES.has(track.license) || !AUDIO_FORMATS.has(track.filetype ?? '')
-        || !track.url?.startsWith('https://') || !track.foreign_landing_url?.startsWith('https://')
-        || !track.license_url?.startsWith('https://creativecommons.org/')) return [];
-
-      return [{
-        id: `openverse-${track.id}`,
-        title: track.title,
-        artist: track.creator || 'Nghệ sĩ chưa rõ',
-        album: 'Nhạc có giấy phép mở',
-        duration,
-        audioUrl: track.url,
-        coverUrl: FALLBACK_ARTWORK,
-        source: 'openverse',
-        isFullTrack: true,
-        attribution: {
-          sourceUrl: track.foreign_landing_url,
-          licenseUrl: track.license_url,
-          licenseName: track.license.toUpperCase(),
-        },
-      }];
-    });
-  } catch {
-    return [];
-  }
+  return result;
 }
 
 export async function GET(request: NextRequest) {
-  const query = request.nextUrl.searchParams.get('q')?.trim().slice(0, 200) ?? '';
-  const term = query.toLowerCase();
-  const curated = CURATED_SONGS.filter((song) =>
-    [song.title, song.artist, song.album, song.category].some((text) => text?.toLowerCase().includes(term))
-  ).map((song) => ({ ...song, isFullTrack: true }));
-  const [audioTracks, openTracks, archiveTracks, dogmazicTracks, fmaTracks] = await Promise.all([
-    getAudiusTracks(query),
-    query ? getOpenverseTracks(query) : Promise.resolve([]),
-    query ? searchArchive(query, 'netlabels') : Promise.resolve([]),
-    query ? searchDogmazic(query) : Promise.resolve([]),
-    query ? searchArchive(query, 'freemusicarchive') : Promise.resolve([]),
+  const sp = request.nextUrl.searchParams;
+  const query = sp.get('q')?.trim().slice(0, 200) ?? '';
+  const genre = sp.get('genre')?.trim().toLowerCase() ?? 'all';
+  const source = sp.get('source')?.trim().toLowerCase() ?? 'all';
+  const page = Math.min(10, Math.max(1, Number(sp.get('page')) || 1));
+
+  const genreKeyword = genre !== 'all' && genre !== 'radio' ? (GENRE_QUERY_MAP[genre] ?? genre) : '';
+  const effectiveQuery = query || genreKeyword;
+  const term = effectiveQuery.toLowerCase();
+
+  const curated =
+    page === 1 && (source === 'all' || source === 'curated') && genre !== 'radio'
+      ? CURATED_SONGS.filter((song) =>
+          !term || [song.title, song.artist, song.album, song.category].some((text) =>
+            text?.toLowerCase().includes(term)
+          )
+        ).map((song) => ({ ...song, isFullTrack: true }))
+      : [];
+
+  if (source === 'radio' || genre === 'radio') {
+    const radioTracks = await searchRadioStations(query || genreKeyword, page);
+    return NextResponse.json({
+      songs: radioTracks,
+      page,
+      hasMore: radioTracks.length >= 15,
+      catalogUnavailable: false,
+    });
+  }
+
+  if (source === 'podcast') {
+    const podcastTracks = await searchMusicPodcasts(query || (genre === 'vpop' ? 'nhạc' : genreKeyword || 'nhạc'), page);
+    return NextResponse.json({
+      songs: podcastTracks,
+      page,
+      hasMore: podcastTracks.length >= 8,
+      catalogUnavailable: false,
+    });
+  }
+
+  // Dedicated Vietnamese V-Pop blend when browsing the V-Pop genre without typing a custom search
+  if (genre === 'vpop' && !query && source === 'all') {
+    const [audiusVpop, vnPodcasts, vnRadio] = await Promise.all([
+      searchAudiusMulti(VPOP_AUDIUS_QUERIES, { page, limitPerQuery: 12 }),
+      searchMusicPodcasts('nhạc', page),
+      page === 1 ? searchRadioStations('vpop', 1) : Promise.resolve([]),
+    ]);
+    const songs = [
+      ...interleaveGroups([audiusVpop, vnPodcasts]),
+      ...vnRadio.slice(0, 6),
+    ];
+    const seenIds = new Set<string>();
+    const unique = songs.filter((s) => (seenIds.has(s.id) ? false : (seenIds.add(s.id), true)));
+    return NextResponse.json({
+      songs: unique,
+      page,
+      hasMore: page < 10 && (audiusVpop.length >= 15 || vnPodcasts.length >= 8),
+      catalogUnavailable: unique.length === 0,
+    });
+  }
+
+  const shouldQuery = (target: string) => source === 'all' || source === target;
+  const archiveQuery = effectiveQuery || 'music';
+
+  const [
+    audiusTracks,
+    openTracks,
+    netlabelTracks,
+    fmaTracks,
+    archiveOpenTracks,
+    wikimediaTracks,
+    dogmazicTracks,
+    podcastTracks,
+    radioTracks,
+  ] = await Promise.all([
+    shouldQuery('audius')
+      ? searchAudius(query, { genre: genre !== 'all' ? genre : undefined, page, limit: 35 })
+      : Promise.resolve([]),
+    shouldQuery('openverse')
+      ? searchOpenverse(effectiveQuery || 'music', page)
+      : Promise.resolve([]),
+    shouldQuery('archive')
+      ? searchArchive(archiveQuery, 'netlabels', page)
+      : Promise.resolve([]),
+    shouldQuery('archive')
+      ? searchArchive(archiveQuery, 'freemusicarchive', page)
+      : Promise.resolve([]),
+    shouldQuery('archive') && (Boolean(effectiveQuery) || page > 1)
+      ? searchArchive(archiveQuery, 'open', page)
+      : Promise.resolve([]),
+    shouldQuery('wikimedia') && Boolean(effectiveQuery)
+      ? searchWikimedia(effectiveQuery, page)
+      : Promise.resolve([]),
+    shouldQuery('dogmazic') && Boolean(effectiveQuery)
+      ? searchDogmazic(effectiveQuery, page)
+      : Promise.resolve([]),
+    source === 'all' && Boolean(effectiveQuery)
+      ? searchMusicPodcasts(effectiveQuery, page)
+      : Promise.resolve([]),
+    source === 'all' && Boolean(effectiveQuery) && page === 1
+      ? searchRadioStations(effectiveQuery, 1).then((tracks) => tracks.slice(0, 4))
+      : Promise.resolve([]),
   ]);
-  const songs = query
-    ? [...curated, ...(audioTracks ?? []), ...openTracks, ...archiveTracks, ...dogmazicTracks, ...fmaTracks]
-    : [...(audioTracks ?? []), ...curated];
-  const seen = new Set<string>();
-  const unique = songs.filter((song) => {
+
+  const audiusList = audiusTracks ?? [];
+  const merged =
+    source === 'all'
+      ? [
+          ...(query ? curated : []),
+          ...audiusList.slice(0, 5),
+          ...interleaveGroups([
+            audiusList.slice(5),
+            podcastTracks,
+            openTracks,
+            fmaTracks,
+            netlabelTracks,
+            archiveOpenTracks,
+            wikimediaTracks,
+            dogmazicTracks,
+          ]),
+          ...(!query ? curated : []),
+          ...radioTracks,
+        ]
+      : [
+          ...curated,
+          ...audiusList,
+          ...podcastTracks,
+          ...openTracks,
+          ...fmaTracks,
+          ...netlabelTracks,
+          ...archiveOpenTracks,
+          ...wikimediaTracks,
+          ...dogmazicTracks,
+          ...radioTracks,
+        ];
+
+  const seenIds = new Set<string>();
+  const seenKeys = new Set<string>();
+  const unique = merged.filter((song) => {
+    if (seenIds.has(song.id)) return false;
     const key = `${song.title}-${song.artist}`.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
+    if (seenKeys.has(key)) return false;
+    seenIds.add(song.id);
+    seenKeys.add(key);
     return true;
   });
 
-  const catalogUnavailable = audioTracks === null && ![openTracks, archiveTracks, dogmazicTracks, fmaTracks].some((tracks) => tracks.length);
-  return NextResponse.json({ songs: unique, catalogUnavailable });
+  const hasMore =
+    page < 10 &&
+    (audiusList.length >= 25 ||
+      openTracks.length >= 15 ||
+      podcastTracks.length >= 8 ||
+      fmaTracks.length >= 6 ||
+      netlabelTracks.length >= 6 ||
+      archiveOpenTracks.length >= 6 ||
+      wikimediaTracks.length >= 10 ||
+      dogmazicTracks.length >= 10);
+
+  const catalogUnavailable =
+    audiusTracks === null &&
+    ![
+      openTracks,
+      podcastTracks,
+      netlabelTracks,
+      fmaTracks,
+      archiveOpenTracks,
+      wikimediaTracks,
+      dogmazicTracks,
+      radioTracks,
+    ].some((tracks) => tracks.length > 0);
+
+  return NextResponse.json({
+    songs: unique,
+    page,
+    hasMore,
+    catalogUnavailable,
+  });
 }

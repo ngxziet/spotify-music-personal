@@ -177,24 +177,26 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
               <Heart className={`w-4 h-4 ${isLiked ? 'fill-[#1ed760]' : ''}`} />
             </button>
 
-            <button
-              onClick={handleDownload}
-              disabled={isDownloading}
-              className={`p-2 rounded-full hover:scale-110 transition-transform ${
-                downloadSuccess || isOfflineReady ? 'text-[#1ed760]' : 'text-zinc-400 hover:text-white'
-              }`}
-              title={isOfflineReady ? 'Đã lưu Offline (Nhấn để tải .mp3)' : 'Tải MP3 về máy & lưu Offline'}
-            >
-              {downloadSuccess || isOfflineReady ? (
-                <Check className="w-4 h-4 text-[#1ed760]" />
-              ) : (
-                <Download
-                  className={`w-4 h-4 ${
-                    isDownloading ? 'animate-bounce text-[#1ed760]' : ''
-                  }`}
-                />
-              )}
-            </button>
+            {!currentSong.isLive && (
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className={`p-2 rounded-full hover:scale-110 transition-transform ${
+                  downloadSuccess || isOfflineReady ? 'text-[#1ed760]' : 'text-zinc-400 hover:text-white'
+                }`}
+                title={isOfflineReady ? 'Đã lưu Offline (Nhấn để tải .mp3)' : 'Tải MP3 về máy & lưu Offline'}
+              >
+                {downloadSuccess || isOfflineReady ? (
+                  <Check className="w-4 h-4 text-[#1ed760]" />
+                ) : (
+                  <Download
+                    className={`w-4 h-4 ${
+                      isDownloading ? 'animate-bounce text-[#1ed760]' : ''
+                    }`}
+                  />
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -265,9 +267,10 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
                 type="range"
                 min="0"
                 max={duration || 100}
-                value={currentTime}
+                value={currentSong.isLive ? 0 : currentTime}
+                disabled={Boolean(currentSong.isLive)}
                 onChange={handleSeek}
-                className="w-full h-1 bg-zinc-700 rounded-lg cursor-pointer accent-[#1ed760]"
+                className="w-full h-1 bg-zinc-700 rounded-lg cursor-pointer accent-[#1ed760] disabled:cursor-default"
                 style={{
                   background: `linear-gradient(to right, #1ed760 ${progressPercent}%, #4d4d4d ${progressPercent}%)`,
                 }}
@@ -275,7 +278,7 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
             </div>
 
             <span className="text-[11px] text-zinc-400 font-mono w-9">
-              {formatTime(duration)}
+              {currentSong.isLive ? 'LIVE' : formatTime(duration)}
             </span>
           </div>
         </div>
