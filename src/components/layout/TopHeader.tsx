@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { ANDROID_APK_URL } from '@/config/downloads';
 import { useLibrary } from '@/context/LibraryContext';
 import { usePwa } from '@/context/PwaContext';
 import {
@@ -24,11 +25,14 @@ interface TopHeaderProps {
   onOpenUploadSong: () => void;
 }
 
+const installActionClass = 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-xs font-bold text-black shadow transition-colors hover:bg-[#1ed760]';
+
 export function TopHeader({ onOpenAuthModal, onOpenUploadSong }: TopHeaderProps) {
   const pathname = usePathname();
   const { currentUser } = useLibrary();
-  const { isStandalone, isOnline, promptInstall } = usePwa();
+  const { isStandalone, isIOS, isInstallReady, isOnline, promptInstall } = usePwa();
   const [showDropdown, setShowDropdown] = useState(false);
+  const showInstallActions = isInstallReady && !isStandalone && isOnline;
 
   const canGoBack = () => {
     if (typeof window !== 'undefined') window.history.back();
@@ -89,16 +93,21 @@ export function TopHeader({ onOpenAuthModal, onOpenUploadSong }: TopHeaderProps)
           </Link>
         )}
 
-        {!isStandalone && (
-          <button
-            onClick={() => promptInstall()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-black hover:bg-[#1ed760] text-xs font-bold shadow transition-all active:scale-95"
-            title="Tải & cài đặt SoundWave như ứng dụng"
-            aria-label="Tải App SoundWave"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>Tải App</span>
-          </button>
+        {showInstallActions && (
+          isIOS ? (
+            <button type="button" onClick={() => promptInstall()} className={installActionClass}>
+              Cài bản web
+            </button>
+          ) : (
+            <a
+              href={ANDROID_APK_URL}
+              className={installActionClass}
+              aria-label="Tải APK SoundWave cho Android"
+            >
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />
+              Tải APK
+            </a>
+          )
         )}
 
         {/* User Pill Dropdown */}
@@ -139,6 +148,17 @@ export function TopHeader({ onOpenAuthModal, onOpenUploadSong }: TopHeaderProps)
                   <History className="w-4 h-4 text-cyan-400" />
                   <span>Lịch sử nghe nhạc</span>
                 </Link>
+
+                {showInstallActions && !isIOS && (
+                  <button
+                    type="button"
+                    onClick={() => promptInstall()}
+                    className="md:hidden w-full text-left px-3 py-2.5 hover:bg-white/10 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Smartphone className="w-4 h-4 text-[#1ed760]" aria-hidden="true" />
+                    Cài bản web
+                  </button>
+                )}
 
                 <button
                   onClick={onOpenUploadSong}

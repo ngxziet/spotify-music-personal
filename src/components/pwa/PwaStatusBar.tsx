@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ANDROID_APK_URL } from '@/config/downloads';
 import { usePwa } from '@/context/PwaContext';
 import {
   WifiOff,
@@ -14,11 +15,13 @@ import {
   Info,
 } from 'lucide-react';
 
+const installActionClass = 'inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#1ed760] px-3 text-xs font-bold text-black transition-colors hover:bg-[#1fdf64]';
+
 export function PwaStatusBar() {
   const {
     isOnline,
     isStandalone,
-    canPromptInstall,
+    isIOS,
     promptInstall,
     isBannerDismissed,
     dismissBanner,
@@ -66,42 +69,42 @@ export function PwaStatusBar() {
         </div>
       )}
 
-      {/* Subtle Install App Banner (only when not installed & not dismissed) */}
       {!isStandalone && !isBannerDismissed && isOnline && (
         <div className="mx-3 sm:mx-6 mt-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-950/90 via-zinc-900 to-zinc-900 border border-[#1ed760]/30 flex items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center gap-3 min-w-0">
             <Image
               src="/icons/icon-192x192.png"
-              alt="SoundWave"
+              alt=""
               width={36}
               height={36}
               className="w-9 h-9 rounded-lg flex-shrink-0 border border-white/10"
             />
             <div className="min-w-0">
-              <p className="text-xs font-bold text-white truncate">
-                Cài đặt App SoundWave về máy
+              <p className="text-xs font-bold text-white">
+                {isIOS ? 'Cài SoundWave trên iPhone hoặc iPad' : 'SoundWave cho Android'}
               </p>
-              <p className="text-[11px] text-zinc-400 truncate">
-                {canPromptInstall
-                  ? 'Nhấn để tải về màn hình chính & nghe nhạc offline'
-                  : 'Mở như ứng dụng độc lập, hỗ trợ nghe offline'}
+              <p className="text-[11px] text-zinc-400">
+                {isIOS ? 'Thêm vào màn hình chính để mở nhanh.' : 'Mở file APK sau khi tải để cài đặt.'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={() => promptInstall()}
-              className="px-3 py-1.5 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] text-black font-bold text-xs flex items-center gap-1.5 transition-transform active:scale-95"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Tải App</span>
-            </button>
+            {isIOS ? (
+              <button type="button" onClick={() => promptInstall()} className={installActionClass}>
+                Cài bản web
+              </button>
+            ) : (
+              <a href={ANDROID_APK_URL} className={installActionClass}>
+                <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                Tải APK
+              </a>
+            )}
             <button
               onClick={dismissBanner}
               className="p-1.5 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
               title="Ẩn gợi ý"
-              aria-label="Ẩn gợi ý cài app"
+              aria-label="Ẩn banner tải ứng dụng"
             >
               <X className="w-4 h-4" />
             </button>

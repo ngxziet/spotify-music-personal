@@ -27,6 +27,7 @@ interface PwaContextType {
   isStandalone: boolean;
   isIOS: boolean;
   isAndroid: boolean;
+  isInstallReady: boolean;
   canPromptInstall: boolean;
   isInstallModalOpen: boolean;
   setIsInstallModalOpen: (open: boolean) => void;
@@ -48,6 +49,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
+  const [isInstallReady, setIsInstallReady] = useState(false);
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
@@ -74,7 +76,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
 
     const ua = navigator.userAgent || '';
     const ios =
-      /iPad|iPhone|iPod/.test(ua) &&
+      (/iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) &&
       !(window as unknown as { MSStream?: unknown }).MSStream;
     const android = /Android/i.test(ua);
 
@@ -92,6 +94,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       setIsIOS(ios);
       setIsAndroid(android);
       setIsStandalone(checkStandalone());
+      setIsInstallReady(true);
       try {
         setIsBannerDismissed(localStorage.getItem(BANNER_DISMISSED_KEY) === '1');
       } catch {
@@ -223,6 +226,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
         isStandalone,
         isIOS,
         isAndroid,
+        isInstallReady,
         canPromptInstall: !!deferredPrompt,
         isInstallModalOpen,
         setIsInstallModalOpen,
