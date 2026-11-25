@@ -40,7 +40,10 @@ export function AppShell({ children, version }: { children: React.ReactNode; ver
             {/* Right Main Scroll Area */}
             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-[#121212] md:my-2 md:mr-2 md:rounded-lg">
               {/* Top Header */}
-              <TopHeader onOpenAuthModal={() => setIsAuthOpen(true)} />
+              <TopHeader
+                onOpenAuthModal={() => setIsAuthOpen(true)}
+                onOpenUploadSong={() => setIsUploadSongOpen(true)}
+              />
 
               {/* Main Page View (scrollable with safe area for bottom player & navigation) */}
               <main className="flex-1 overflow-y-auto overscroll-contain pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] md:pb-28">

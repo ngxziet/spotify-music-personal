@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useLibrary } from '@/context/LibraryContext';
 import { usePwa } from '@/context/PwaContext';
 import {
@@ -13,6 +13,7 @@ import {
   History,
   Music,
   Smartphone,
+  Upload,
   WifiOff,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -20,10 +21,10 @@ import Image from 'next/image';
 
 interface TopHeaderProps {
   onOpenAuthModal: () => void;
+  onOpenUploadSong: () => void;
 }
 
-export function TopHeader({ onOpenAuthModal }: TopHeaderProps) {
-  const router = useRouter();
+export function TopHeader({ onOpenAuthModal, onOpenUploadSong }: TopHeaderProps) {
   const pathname = usePathname();
   const { currentUser } = useLibrary();
   const { isStandalone, isOnline, promptInstall } = usePwa();
@@ -138,6 +139,14 @@ export function TopHeader({ onOpenAuthModal }: TopHeaderProps) {
                   <History className="w-4 h-4 text-cyan-400" />
                   <span>Lịch sử nghe nhạc</span>
                 </Link>
+
+                <button
+                  onClick={onOpenUploadSong}
+                  className="md:hidden w-full text-left px-3 py-2.5 hover:bg-white/10 flex items-center gap-2.5 transition-colors"
+                >
+                  <Upload className="w-4 h-4 text-[#1ed760]" />
+                  <span>Tải nhạc từ máy</span>
+                </button>
 
                 <button
                   onClick={onOpenAuthModal}
