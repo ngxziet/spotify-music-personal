@@ -18,6 +18,14 @@ interface SongRowProps {
   onRemove?: () => void;
 }
 
+const CATALOG_NAMES: Partial<Record<NonNullable<Song['source']>, string>> = {
+  audius: 'Audius',
+  openverse: 'Openverse',
+  archive: 'Internet Archive',
+  dogmazic: 'Dogmazic',
+  fma: 'Free Music Archive',
+};
+
 export function SongRow({ song, index, playlistContext, showAlbum = true, onRemove }: SongRowProps) {
   const { currentSong, isPlaying, playSong, togglePlay } = useAudio();
   const { isSongLiked, isSongOffline, toggleLikeSong, downloadSong, playlists, addSongToPlaylist } = useLibrary();
@@ -30,6 +38,7 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
   const isLiked = isSongLiked(song.id);
   const isPlayable = isPlayableSong(song);
   const isOfflineReady = isSongOffline(song.id) || !!song.isLocal || !!song.isDownloaded;
+  const catalogName = (song.source && CATALOG_NAMES[song.source]) || 'Bản đầy đủ';
 
   const handleRowClick = () => {
     if (isCurrent) {
@@ -116,7 +125,7 @@ export function SongRow({ song, index, playlistContext, showAlbum = true, onRemo
             )}
             {isPlayable && !song.isLocal && (song.source === 'audius' || song.source === 'curated' || song.isFullTrack) && (
               <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-[#1ed760]/20 text-[#1ed760] font-medium" title="Bản nhạc đầy đủ">
-                {song.source === 'audius' ? 'Audius' : song.source === 'openverse' ? 'Openverse' : song.source === 'archive' ? 'Internet Archive' : 'Bản đầy đủ'}
+                {catalogName}
               </span>
             )}
           </p>

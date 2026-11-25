@@ -11,7 +11,7 @@ export interface Song {
   isLocal?: boolean;
   isDownloaded?: boolean;
   downloadedAt?: string;
-  source?: 'curated' | 'audius' | 'openverse' | 'archive' | 'youtube' | 'itunes' | 'local';
+  source?: 'curated' | 'audius' | 'openverse' | 'archive' | 'dogmazic' | 'fma' | 'youtube' | 'itunes' | 'local';
   attribution?: {
     sourceUrl: string;
     licenseUrl: string;

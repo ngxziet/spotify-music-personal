@@ -18,7 +18,7 @@
 - **Hẹn giờ tắt nhạc (Sleep Timer):** Tự động dừng nhạc sau 15p, 30p, 45p, 60p.
 
 ### 2. 🔍 Tìm Kiếm Nhạc Trực Tuyến & Tuyển Chọn
-- **Kho nhạc** tìm bài đầy đủ trên Audius và bổ sung nhạc có giấy phép mở từ Openverse và Internet Archive Netlabels. Trang tìm kiếm cũng tra file đã tải và nhạc cá nhân trên máy.
+- **Kho nhạc** tìm bài đầy đủ trên Audius, Openverse, Internet Archive Netlabels, Dogmazic và bộ Free Music Archive lưu tại Internet Archive. SoundWave phát nguyên bản các bài Creative Commons và hiển thị nguồn cùng giấy phép. Việc sử dụng các bài mang điều khoản NC phụ thuộc vào việc SoundWave tiếp tục hoạt động phi thương mại. Trang tìm kiếm cũng tra file đã tải và nhạc cá nhân trên máy.
 - Tích hợp kho nhạc tuyển chọn sẵn có (Chill Lofi, Acoustic, Pop, EDM, Piano, Focus).
 - Lọc theo thể loại: V-Pop, Pop, Lofi, EDM, Piano, Acoustic, Rock.
 

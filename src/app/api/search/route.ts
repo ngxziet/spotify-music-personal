@@ -3,6 +3,7 @@ import { CURATED_SONGS } from '@/data/mockData';
 import type { Song } from '@/types';
 import { audiusStreamUrl } from '@/utils/audioSource';
 import { searchArchive } from './archive';
+import { searchDogmazic } from './dogmazic';
 
 type AudiusTrack = {
   id?: string;
@@ -123,13 +124,15 @@ export async function GET(request: NextRequest) {
   const curated = CURATED_SONGS.filter((song) =>
     [song.title, song.artist, song.album, song.category].some((text) => text?.toLowerCase().includes(term))
   ).map((song) => ({ ...song, isFullTrack: true }));
-  const [audioTracks, openTracks, archiveTracks] = await Promise.all([
+  const [audioTracks, openTracks, archiveTracks, dogmazicTracks, fmaTracks] = await Promise.all([
     getAudiusTracks(query),
     query ? getOpenverseTracks(query) : Promise.resolve([]),
-    query ? searchArchive(query) : Promise.resolve([]),
+    query ? searchArchive(query, 'netlabels') : Promise.resolve([]),
+    query ? searchDogmazic(query) : Promise.resolve([]),
+    query ? searchArchive(query, 'freemusicarchive') : Promise.resolve([]),
   ]);
   const songs = query
-    ? [...curated, ...(audioTracks ?? []), ...openTracks, ...archiveTracks]
+    ? [...curated, ...(audioTracks ?? []), ...openTracks, ...archiveTracks, ...dogmazicTracks, ...fmaTracks]
     : [...(audioTracks ?? []), ...curated];
   const seen = new Set<string>();
   const unique = songs.filter((song) => {
@@ -139,5 +142,6 @@ export async function GET(request: NextRequest) {
     return true;
   });
 
-  return NextResponse.json({ songs: unique, catalogUnavailable: audioTracks === null && openTracks.length === 0 && archiveTracks.length === 0 });
+  const catalogUnavailable = audioTracks === null && ![openTracks, archiveTracks, dogmazicTracks, fmaTracks].some((tracks) => tracks.length);
+  return NextResponse.json({ songs: unique, catalogUnavailable });
 }
