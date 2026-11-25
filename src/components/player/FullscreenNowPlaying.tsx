@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useAudio, useAudioPosition } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
 import { usePwa } from '@/context/PwaContext';
@@ -19,7 +20,8 @@ import {
   ListMusic,
   Clock,
   Check,
-  Disc,
+  Headphones,
+  ExternalLink,
 } from 'lucide-react';
 import { SafeImage as Image } from '@/components/ui/SafeImage';
 
@@ -59,6 +61,9 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
   const isLiked = isSongLiked(currentSong.id);
   const isOfflineReady = isSongOffline(currentSong.id) || !!currentSong.isLocal || !!currentSong.isDownloaded;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const youtubeParams = currentSong.youtubeId
+    ? new URLSearchParams({ v: currentSong.youtubeId, t: String(Math.floor(currentTime)) })
+    : null;
 
   const handleDownload = async () => {
     if (currentSong.youtubeId && !currentSong.audioUrl) {
@@ -193,6 +198,32 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
             </button>
           </div>
         </div>
+
+        {youtubeParams && (
+          <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
+            <p className="text-xs text-zinc-300">
+              Video nhúng YouTube tạm dừng khi khóa màn hình.
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Link
+                href={`/search?${new URLSearchParams({ q: currentSong.title, source: 'audio' })}`}
+                onClick={() => setIsNowPlayingOpen(false)}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#1ed760] px-3 text-xs font-bold text-black hover:bg-[#1fdf64]"
+              >
+                <Headphones className="h-3.5 w-3.5" aria-hidden="true" />
+                Tìm bản nghe nền
+              </Link>
+              <a
+                href={`https://www.youtube.com/watch?${youtubeParams}`}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/20 px-3 text-xs font-semibold text-white hover:bg-white/10"
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                Mở YouTube
+              </a>
+            </div>
+            <p className="mt-1 text-[11px] text-zinc-400">Phát nền trong app YouTube cần Premium.</p>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="space-y-1">

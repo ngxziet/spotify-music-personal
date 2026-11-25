@@ -614,7 +614,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       nativePendingIdRef.current = '';
       nativeActiveRef.current = false;
       sendAndroidPlayback({ action: 'stop' });
-      showToast('Bài YouTube sẽ tạm dừng khi khóa màn hình.', 'info');
+      showToast('Mở trình phát để tìm bản nghe nền cho bài YouTube này.', 'info');
     }
 
     if (songWithTime.youtubeId) {

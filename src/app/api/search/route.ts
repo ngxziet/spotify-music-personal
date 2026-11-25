@@ -32,6 +32,62 @@ function cleanSongTitle(raw?: string): { title: string; artistFromTitle?: string
   return { title: clean };
 }
 
+type AudiusTrack = {
+  id?: string;
+  title?: string;
+  user?: { name?: string };
+  genre?: string;
+  duration?: number;
+  artwork?: { '480x480'?: string };
+  is_streamable?: boolean;
+  access?: { stream?: boolean };
+};
+
+async function searchAudius(query: string): Promise<Song[]> {
+  const params = new URLSearchParams({ query, limit: '20', app_name: 'SoundWave' });
+  try {
+    const response = await fetch(`https://api.audius.co/v1/tracks/search?${params}`, {
+      headers: { Accept: 'application/json' },
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) return [];
+    const { data } = await response.json() as { data?: AudiusTrack[] };
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .filter((track): track is AudiusTrack & { id: string; title: string } =>
+        Boolean(track.id && track.title && track.is_streamable === true && track.access?.stream !== false)
+      )
+      .slice(0, 15)
+      .map((track) => ({
+        id: `audius-${track.id}`,
+        title: track.title,
+        artist: track.user?.name || 'Audius Artist',
+        album: track.genre || 'Single',
+        duration: track.duration || 180,
+        audioUrl: `https://api.audius.co/v1/tracks/${encodeURIComponent(track.id)}/stream?app_name=SoundWave`,
+        coverUrl: track.artwork?.['480x480']
+          || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+        category: track.genre || 'Electronic',
+        source: 'audius',
+        isFullTrack: true,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function uniqueSongs(songs: Song[]) {
+  const seen = new Set<string>();
+  return songs.filter((song) => {
+    const key = `${song.title}-${song.artist}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get('q')?.trim() || '';
@@ -51,6 +107,11 @@ export async function GET(request: NextRequest) {
       (s.album && s.album.toLowerCase().includes(queryLower)) ||
       (s.category && s.category.toLowerCase().includes(queryLower))
   ).map((s) => ({ ...s, isFullTrack: true }));
+
+  if (searchParams.get('source') === 'audio') {
+    const audioTracks = await searchAudius(query);
+    return NextResponse.json({ songs: uniqueSongs([...localMatches, ...audioTracks]) });
+  }
 
   let ytSongs: Song[] = [];
 
@@ -115,45 +176,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 3. Fallback: Search Audius for full songs if YouTube didn't find any
-  let audiusSongs: Song[] = [];
-  if (ytSongs.length === 0) {
-    try {
-      const audiusUrl = `https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(
-        query
-      )}&app_name=SoundWave`;
-
-      const res = await fetch(audiusUrl, {
-        headers: { Accept: 'application/json' },
-        next: { revalidate: 3600 },
-        signal: AbortSignal.timeout(4000),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data && Array.isArray(json.data)) {
-          audiusSongs = json.data
-            .filter((item: any) => item.is_streamable !== false && item.title)
-            .slice(0, 15)
-            .map((item: any) => ({
-              id: `audius-${item.id}`,
-              title: item.title,
-              artist: item.user?.name || 'Audius Artist',
-              album: item.genre || 'Single',
-              duration: item.duration || 180,
-              audioUrl:
-                item.stream?.url ||
-                `https://discoveryprovider.audius.co/v1/tracks/${item.id}/stream?app_name=SoundWave`,
-              coverUrl:
-                item.artwork?.['480x480'] ||
-                'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-              category: item.genre || 'Electronic',
-              source: 'audius',
-              isFullTrack: true,
-            })) as Song[];
-        }
-      }
-    } catch {}
-  }
+  const audiusSongs = ytSongs.length === 0 ? await searchAudius(query) : [];
 
   // 4. Fallback to iTunes if both YouTube and Audius fail
   let itunesSongs: Song[] = [];
@@ -188,14 +211,5 @@ export async function GET(request: NextRequest) {
   // Combine: local matches first, then YouTube full songs, then Audius, then iTunes
   const combined = [...localMatches, ...ytSongs, ...audiusSongs, ...itunesSongs];
 
-  // Remove duplicate items
-  const seen = new Set<string>();
-  const uniqueSongs = combined.filter((song) => {
-    const key = `${song.title}-${song.artist}`.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  return NextResponse.json({ songs: uniqueSongs });
+  return NextResponse.json({ songs: uniqueSongs(combined) });
 }
