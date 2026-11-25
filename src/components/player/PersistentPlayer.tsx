@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAudio } from '@/context/AudioContext';
+import { useAudio, useAudioPosition } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
 import { usePwa } from '@/context/PwaContext';
 import { formatTime } from '@/utils/format';
@@ -33,7 +33,6 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
   const {
     currentSong,
     isPlaying,
-    currentTime,
     duration,
     volume,
     isMuted,
@@ -55,6 +54,7 @@ export function PersistentPlayer({ onOpenSleepTimer }: PersistentPlayerProps) {
     setIsQueueOpen,
     setIsNowPlayingOpen,
   } = useAudio();
+  const currentTime = useAudioPosition();
 
   const { isSongLiked, isSongOffline, toggleLikeSong, downloadSong } = useLibrary();
   const { showToast } = usePwa();

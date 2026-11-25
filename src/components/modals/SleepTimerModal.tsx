@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useEffectEvent } from 'react';
 import { useAudio } from '@/context/AudioContext';
 import { X, Clock, Check } from 'lucide-react';
 
@@ -12,35 +12,30 @@ interface SleepTimerModalProps {
 export function SleepTimerModal({ isOpen, onClose }: SleepTimerModalProps) {
   const { pauseSong } = useAudio();
   const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
+  const [deadline, setDeadline] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const onTimerEnd = useEffectEvent(() => {
+    pauseSong();
+    setDeadline(null);
+    setSelectedMinutes(null);
+    setTimeLeft(null);
+  });
 
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0) return;
+    if (deadline === null) return;
+    const timer = window.setTimeout(() => onTimerEnd(), Math.max(0, deadline - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [deadline]);
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev === null || prev <= 1) {
-          pauseSong();
-          setSelectedMinutes(null);
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, pauseSong]);
+  useEffect(() => {
+    if (!isOpen || deadline === null) return;
+    const updateRemaining = () => setTimeLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    const timer = window.setInterval(updateRemaining, 1000);
+    queueMicrotask(updateRemaining);
+    return () => window.clearInterval(timer);
+  }, [deadline, isOpen]);
 
   if (!isOpen) return null;
-
-  const handleSelectTime = (minutes: number | null) => {
-    setSelectedMinutes(minutes);
-    if (minutes === null) {
-      setTimeLeft(null);
-    } else {
-      setTimeLeft(minutes * 60);
-    }
-  };
 
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -90,7 +85,12 @@ export function SleepTimerModal({ isOpen, onClose }: SleepTimerModalProps) {
           {options.map((opt) => (
             <button
               key={opt.label}
-              onClick={() => handleSelectTime(opt.value)}
+              onClick={() => {
+                const minutes = opt.value;
+                setSelectedMinutes(minutes);
+                setDeadline(minutes === null ? null : Date.now() + minutes * 60_000);
+                setTimeLeft(minutes === null ? null : minutes * 60);
+              }}
               className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition-all ${
                 selectedMinutes === opt.value
                   ? 'bg-[#1ed760] text-black font-bold'

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAudio } from '@/context/AudioContext';
+import { useAudio, useAudioPosition } from '@/context/AudioContext';
 import { useLibrary } from '@/context/LibraryContext';
 import { usePwa } from '@/context/PwaContext';
 import { formatTime } from '@/utils/format';
@@ -31,7 +31,6 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
   const {
     currentSong,
     isPlaying,
-    currentTime,
     duration,
     isShuffle,
     repeatMode,
@@ -48,6 +47,7 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
     setIsLyricsOpen,
     setIsQueueOpen,
   } = useAudio();
+  const currentTime = useAudioPosition(isNowPlayingOpen);
 
   const { isSongLiked, isSongOffline, toggleLikeSong, downloadSong } = useLibrary();
   const { showToast } = usePwa();

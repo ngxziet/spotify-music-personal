@@ -1,33 +1,32 @@
 'use client';
 
-import React from 'react';
-import { useAudio } from '@/context/AudioContext';
+import React, { useMemo } from 'react';
+import { useAudio, useAudioPosition } from '@/context/AudioContext';
 import { X, Mic2, Disc } from 'lucide-react';
 import { SafeImage as Image } from '@/components/ui/SafeImage';
 
-export function LyricsModal() {
-  const { currentSong, isLyricsOpen, setIsLyricsOpen, currentTime } = useAudio();
-
-  if (!isLyricsOpen) return null;
-
-  const defaultLyrics = currentSong?.lyrics || `[00:00.00] ♫ Giai điệu đang vang lên...
+const FALLBACK_LYRICS = `[00:00.00] ♫ Giai điệu đang vang lên...
 [00:10.00] Lắng nghe từng nhịp đập của âm thanh
 [00:20.00] Hòa mình vào không gian âm nhạc thư thái
 [00:30.00] Cùng SoundWave tận hưởng phút giây này!
 [00:45.00] (Không có lời bài hát chi tiết cho track này)
 [01:00.00] ♫ Tận hưởng giai điệu tuyệt vời ♫`;
 
-  // Parse lyrics lines
-  const lines = defaultLyrics.split('\n').map((line, idx) => {
-    const timeMatch = line.match(/\[(\d+):(\d+\.?\d*)\]/);
-    let seconds = 0;
-    let text = line;
-    if (timeMatch) {
-      seconds = parseInt(timeMatch[1]) * 60 + parseFloat(timeMatch[2]);
-      text = line.replace(/\[\d+:\d+\.?\d*\]/, '').trim();
-    }
-    return { id: idx, seconds, text };
-  });
+export function LyricsModal() {
+  const { currentSong, isLyricsOpen, setIsLyricsOpen } = useAudio();
+  const currentTime = useAudioPosition(isLyricsOpen);
+  const lyrics = currentSong?.lyrics || FALLBACK_LYRICS;
+  const lines = useMemo(() => {
+    if (!isLyricsOpen) return [];
+    return lyrics.split('\n').map((line, id) => {
+      const timestamp = line.match(/\[(\d+):(\d+\.?\d*)\]/);
+      const seconds = timestamp ? Number(timestamp[1]) * 60 + Number(timestamp[2]) : 0;
+      const text = timestamp ? line.replace(timestamp[0], '').trim() : line;
+      return { id, seconds, text };
+    });
+  }, [isLyricsOpen, lyrics]);
+
+  if (!isLyricsOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">

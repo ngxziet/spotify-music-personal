@@ -65,15 +65,6 @@ export function AppShell({ children, version }: { children: React.ReactNode; ver
           <QueueDrawer />
           <InstallAppModal />
 
-          {/* Background YouTube Audio Engine (Kept inside viewport with 0.01 opacity for background playback across tabs) */}
-          <div
-            className="fixed bottom-0 right-0 w-[200px] h-[150px] -z-50 pointer-events-none"
-            style={{ opacity: 0.01 }}
-            aria-hidden="true"
-          >
-            <div id="soundwave-yt-player" />
-          </div>
-
           <CreatePlaylistModal
             isOpen={isCreatePlaylistOpen}
             onClose={() => setIsCreatePlaylistOpen(false)}

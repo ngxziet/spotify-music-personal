@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
-import { Search as SearchIcon, X, Music, Sparkles, Loader2, Play } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search as SearchIcon, X, Music, Loader2, Play } from 'lucide-react';
 import { Song } from '@/types';
 import { CURATED_SONGS, GENRES } from '@/data/mockData';
 import { SongRow } from '@/components/cards/SongRow';
@@ -10,55 +10,51 @@ import { SafeImage as Image } from '@/components/ui/SafeImage';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Song[]>(CURATED_SONGS);
+  const [searchResults, setSearchResults] = useState<Song[]>(CURATED_SONGS);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState('all');
   const { playSong } = useAudio();
+  const searchTerm = query.trim();
+  const genreMatches = selectedGenre === 'all'
+    ? CURATED_SONGS
+    : CURATED_SONGS.filter((song) => song.category?.toLowerCase().includes(selectedGenre.toLowerCase()));
+  const results = searchTerm ? searchResults : genreMatches.length ? genreMatches : CURATED_SONGS;
 
   // Search effect with debounce
   useEffect(() => {
-    if (!query.trim()) {
-      if (selectedGenre === 'all') {
-        setResults(CURATED_SONGS);
-      } else {
-        const filtered = CURATED_SONGS.filter((s) =>
-          s.category?.toLowerCase().includes(selectedGenre.toLowerCase())
-        );
-        setResults(filtered.length > 0 ? filtered : CURATED_SONGS);
-      }
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
+    if (!searchTerm) return;
+    const controller = new AbortController();
     const handler = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchTerm)}`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
-          setResults(data.songs || []);
+          if (!controller.signal.aborted) setSearchResults(data.songs || []);
         }
       } catch (err) {
-        console.error('Search request failed:', err);
+        if (!controller.signal.aborted) console.error('Search request failed:', err);
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     }, 400);
 
-    return () => clearTimeout(handler);
-  }, [query, selectedGenre]);
+    return () => {
+      clearTimeout(handler);
+      controller.abort();
+    };
+  }, [searchTerm]);
+
+  const changeQuery = (value: string) => {
+    const nextTerm = value.trim();
+    if (nextTerm !== searchTerm) setIsLoading(Boolean(nextTerm));
+    setQuery(value);
+  };
 
   const handleGenreClick = (genreId: string) => {
     setSelectedGenre(genreId);
-    setQuery('');
-    if (genreId === 'all') {
-      setResults(CURATED_SONGS);
-    } else {
-      const filtered = CURATED_SONGS.filter((s) =>
-        s.category?.toLowerCase().includes(genreId.toLowerCase())
-      );
-      setResults(filtered.length > 0 ? filtered : CURATED_SONGS);
-    }
+    changeQuery('');
   };
 
   const topResult = results[0];
@@ -72,14 +68,14 @@ export default function SearchPage() {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => changeQuery(e.target.value)}
             placeholder="Bạn muốn nghe bài hát, nghệ sĩ hoặc thể loại gì?"
             className="w-full pl-10 sm:pl-12 pr-10 py-2.5 sm:py-3 bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-white text-xs sm:text-sm rounded-full border border-transparent focus:border-zinc-500 focus:outline-none transition-all placeholder-zinc-400 shadow-inner"
             autoFocus
           />
           {query && (
             <button
-              onClick={() => setQuery('')}
+              onClick={() => changeQuery('')}
               className="absolute right-3 p-1 text-zinc-400 hover:text-white rounded-full transition-colors"
             >
               <X className="w-4 h-4" />

@@ -47,6 +47,7 @@ import java.util.List;
 public final class MainActivity extends Activity {
     private static final String ORIGIN = "https://spotify-music-personal.vercel.app";
     private static final int OPEN_AUDIO = 1;
+    private static final long POSITION_UPDATE_INTERVAL_MS = 500;
     private static final String CACHE_KEY = "[a-zA-Z0-9_-]{1,80}";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<JSONObject> pendingCommands = new ArrayList<>();
@@ -61,8 +62,9 @@ public final class MainActivity extends Activity {
     private final Runnable updatePosition = new Runnable() {
         @Override
         public void run() {
+            if (!shouldSendPositionUpdates()) return;
             publishState();
-            handler.postDelayed(this, 500);
+            handler.postDelayed(this, POSITION_UPDATE_INTERVAL_MS);
         }
     };
 
@@ -105,6 +107,7 @@ public final class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
                 webClient = null;
+                handler.removeCallbacks(updatePosition);
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -153,12 +156,12 @@ public final class MainActivity extends Activity {
                 controller.addListener(new Player.Listener() {
                     @Override
                     public void onEvents(Player player, Player.Events events) {
-                        publishState();
+                        refreshPlaybackState();
                     }
                 });
                 for (JSONObject command : pendingCommands) dispatch(command);
                 pendingCommands.clear();
-                publishState();
+                refreshPlaybackState();
             } catch (Exception error) {
                 publishError("", "Không kết nối được trình phát Android.");
             }
@@ -187,7 +190,7 @@ public final class MainActivity extends Activity {
         try {
             switch (action) {
                 case "sync":
-                    publishState();
+                    refreshPlaybackState();
                     break;
                 case "play":
                     MediaItem song = toMediaItem(command.getJSONObject("song"));
@@ -327,6 +330,18 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private boolean shouldSendPositionUpdates() {
+        return visible && webClient != null && controller != null && controller.isPlaying();
+    }
+
+    private void refreshPlaybackState() {
+        publishState();
+        handler.removeCallbacks(updatePosition);
+        if (shouldSendPositionUpdates()) {
+            handler.postDelayed(updatePosition, POSITION_UPDATE_INTERVAL_MS);
+        }
+    }
+
     private void publishState() {
         if (controller == null || webClient == null || !visible) return;
         try {
@@ -350,14 +365,16 @@ public final class MainActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
+        webView.onResume();
         visible = true;
-        handler.post(updatePosition);
+        refreshPlaybackState();
     }
 
     @Override
     protected void onStop() {
         visible = false;
         handler.removeCallbacks(updatePosition);
+        webView.onPause();
         super.onStop();
     }
 

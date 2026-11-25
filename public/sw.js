@@ -116,10 +116,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Next.js & public assets: stale-while-revalidate / cache-first
+  // Next.js chunks have versioned URLs. Only revalidate unversioned public assets.
   if (isCacheableStaticAsset(url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
+        if (cached && url.pathname.startsWith('/_next/static/')) return cached;
         const networkFetch = fetch(request)
           .then((response) => {
             if (response && response.ok) {
