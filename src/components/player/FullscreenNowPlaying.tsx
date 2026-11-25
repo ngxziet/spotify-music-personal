@@ -38,6 +38,7 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
     repeatMode,
     playbackRate,
     isNowPlayingOpen,
+    youTubeNotice,
     setIsNowPlayingOpen,
     togglePlay,
     playNext,
@@ -134,24 +135,29 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
         </button>
       </div>
 
-      {/* Main Cover Artwork (Adaptive for portrait, landscape, small & large screens) */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-3 sm:my-6 min-h-0">
-        <div className="relative aspect-square w-full max-w-[260px] xs:max-w-[290px] sm:max-w-sm max-h-[38vh] sm:max-h-[46vh] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 group">
-          <Image
-            src={currentSong.coverUrl}
-            alt={currentSong.title}
-            fill
-            className="object-cover"
-            priority
-          />
-          {isPlaying && (
-            <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow">
-              <span className="w-2 h-2 rounded-full bg-[#1ed760] animate-ping"></span>
-              <span className="text-[10px] font-bold text-[#1ed760] uppercase">Playing</span>
-            </div>
-          )}
+      {currentSong.youtubeId ? (
+        <div className="relative z-10 mx-auto my-3 w-full max-w-xl shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black">
+          <div id="soundwave-youtube-player" className="h-[clamp(200px,54vw,320px)] w-full" />
         </div>
-      </div>
+      ) : (
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-3 sm:my-6 min-h-0">
+          <div className="relative aspect-square w-full max-w-[260px] xs:max-w-[290px] sm:max-w-sm max-h-[38vh] sm:max-h-[46vh] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 group">
+            <Image
+              src={currentSong.coverUrl}
+              alt={currentSong.title}
+              fill
+              className="object-cover"
+              priority
+            />
+            {isPlaying && (
+              <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow">
+                <span className="w-2 h-2 rounded-full bg-[#1ed760] animate-ping"></span>
+                <span className="text-[10px] font-bold text-[#1ed760] uppercase">Playing</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Song Info & Actions */}
       <div className="relative z-10 max-w-md mx-auto w-full space-y-4">
@@ -201,8 +207,8 @@ export function FullscreenNowPlaying({ onOpenSleepTimer }: FullscreenNowPlayingP
 
         {youtubeParams && (
           <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
-            <p className="text-xs text-zinc-300">
-              Video nhúng YouTube tạm dừng khi khóa màn hình.
+            <p className="text-xs text-zinc-300" role="status">
+              {youTubeNotice ?? 'Video YouTube tạm dừng khi thu nhỏ trình phát hoặc khóa màn hình.'}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Link

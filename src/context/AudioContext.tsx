@@ -45,14 +45,12 @@ interface YouTubePlayer {
 declare global {
   interface Window {
     YT?: {
-      Player: new (id: string, options: {
-        height: string;
-        width: string;
-        playerVars: Record<string, number>;
+      Player: new (iframe: HTMLIFrameElement, options: {
         events: {
           onReady(event: { target: YouTubePlayer }): void;
           onStateChange(event: { target: YouTubePlayer; data: number }): void;
-          onError(): void;
+          onError(event: { data: number }): void;
+          onAutoplayBlocked(): void;
         };
       }) => YouTubePlayer;
     };
@@ -72,6 +70,7 @@ interface AudioContextType {
   queue: Song[];
   history: Song[];
   isNowPlayingOpen: boolean;
+  youTubeNotice: string | null;
   isLyricsOpen: boolean;
   isQueueOpen: boolean;
   playSong: (song: Song, newQueue?: Song[]) => void;
@@ -113,7 +112,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const lastSavedAtRef = useRef(0);
 
   const [position] = useState(createAudioPosition);
-  const [loadYouTube, setLoadYouTube] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  const [youTubeNotice, setYouTubeNotice] = useState<string | null>(null);
   const [currentSong, setCurrentSong] = useState<Song | null>(() => CURATED_SONGS[0]);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [duration, setDuration] = useState<number>(() => CURATED_SONGS[0].duration);
@@ -126,7 +126,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [history, setHistory] = useState<Song[]>([]);
 
   // Modals state
-  const [isNowPlayingOpen, setIsNowPlayingOpen] = useState<boolean>(false);
+  const [isNowPlayingOpen, setNowPlayingOpen] = useState<boolean>(false);
   const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
   const [isQueueOpen, setIsQueueOpen] = useState<boolean>(false);
 
@@ -155,10 +155,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
     };
     const onVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
       if (document.hidden) {
         if (currentSongRef.current?.youtubeId) {
           userWantsPlayingRef.current = false;
-          ytPlayerRef.current?.pauseVideo();
+          const player = ytPlayerRef.current;
+          if (player) {
+            position.update(player.getCurrentTime(), true);
+            player.pauseVideo();
+          }
+          isPlayingRef.current = false;
+          setIsPlaying(false);
         }
         saveSession();
       } else {
@@ -260,43 +267,58 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [position]);
 
   const onYouTubeEnded = useEffectEvent(() => playNext());
-  const onYouTubeReady = useEffectEvent((player: YouTubePlayer) => {
+  const onYouTubeReady = useEffectEvent((player: YouTubePlayer, iframe: HTMLIFrameElement) => {
     ytPlayerRef.current = player;
     player.setVolume(isMuted ? 0 : volume * 100);
+    const bounds = iframe.getBoundingClientRect();
+    const visibleHeight = Math.max(0, Math.min(bounds.bottom, window.visualViewport?.height ?? window.innerHeight)
+      - Math.max(0, bounds.top));
+    if (bounds.height === 0 || visibleHeight < bounds.height / 2) return;
     playYouTube(position.read());
   });
-  const onYouTubeError = useEffectEvent(() => {
+  const onYouTubeError = useEffectEvent((code?: number) => {
     if (!currentSongRef.current?.youtubeId) return;
     userWantsPlayingRef.current = false;
     setIsPlaying(false);
-    showToast('Không phát được bài YouTube này.', 'warning');
+    const disallowsEmbed = code === 101 || code === 150;
+    setYouTubeNotice(disallowsEmbed
+      ? 'Chủ video giới hạn phát nhúng. Bạn có thể mở bài này trong YouTube.'
+      : 'Chưa phát được video này. Hãy mở lại trình phát hoặc chọn Mở YouTube.');
   });
 
-  // Load the iframe API on the first request to play a YouTube track.
+  const showYouTubeFrame = isNowPlayingOpen && isPageVisible && Boolean(currentSong?.youtubeId);
+
   useEffect(() => {
-    if (!loadYouTube) return;
+    if (!showYouTubeFrame) return;
+    const container = document.getElementById('soundwave-youtube-player');
+    if (!container) return;
     let active = true;
     let script: HTMLScriptElement | undefined;
     let player: YouTubePlayer | undefined;
 
     const initYt = () => {
-      if (!active || player || !window.YT?.Player) return;
+      const videoId = currentSongRef.current?.youtubeId;
+      if (!active || player || !window.YT?.Player || !videoId) return;
+      const params = new URLSearchParams({
+        enablejsapi: '1',
+        origin: window.location.origin,
+        playsinline: '1',
+        start: String(Math.floor(position.read())),
+      });
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?${params}`;
+      iframe.title = 'Trình phát YouTube';
+      iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+      iframe.allow = 'autoplay; encrypted-media; fullscreen';
+      iframe.allowFullscreen = true;
+      iframe.className = 'h-full w-full border-0';
+      container.replaceChildren(iframe);
+
       try {
-        player = new window.YT.Player('soundwave-yt-player', {
-          height: '200',
-          width: '200',
-          playerVars: {
-            autoplay: 0,
-            controls: 0,
-            disablekb: 1,
-            fs: 0,
-            modestbranding: 1,
-            rel: 0,
-            iv_load_policy: 3,
-          },
+        player = new window.YT.Player(iframe, {
           events: {
             onReady: (event) => {
-              if (active) onYouTubeReady(event.target);
+              if (active) onYouTubeReady(event.target, iframe);
             },
             onStateChange: (event) => {
               const songId = currentSongRef.current?.youtubeId;
@@ -304,10 +326,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
               const videoId = event.target.getVideoData?.()?.video_id;
               if (videoId && videoId !== songId) return;
               if (event.data === 1) {
-                if (document.hidden || !userWantsPlayingRef.current) {
+                if (document.hidden) {
                   event.target.pauseVideo();
                   return;
                 }
+                userWantsPlayingRef.current = true;
+                setYouTubeNotice(null);
                 setIsPlaying(true);
                 const d = event.target.getDuration();
                 if (d && d > 0) setDuration(d);
@@ -320,12 +344,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 onYouTubeEnded();
               }
             },
-            onError: () => { if (active) onYouTubeError(); },
+            onError: (event) => { if (active) onYouTubeError(event.data); },
+            onAutoplayBlocked: () => {
+              if (!active || document.hidden) return;
+              setYouTubeNotice('Nhấn nút Phát trên video để bắt đầu.');
+            },
           },
         });
       } catch {
+        container.replaceChildren();
         onYouTubeError();
-        setLoadYouTube(false);
       }
     };
 
@@ -337,7 +365,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       script.onerror = () => {
         if (!active) return;
         onYouTubeError();
-        setLoadYouTube(false);
       };
       window.onYouTubeIframeAPIReady = initYt;
       document.head.appendChild(script);
@@ -347,9 +374,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (window.onYouTubeIframeAPIReady === initYt) delete window.onYouTubeIframeAPIReady;
       script?.remove();
       player?.destroy();
+      container.replaceChildren();
       ytPlayerRef.current = null;
     };
-  }, [loadYouTube, persistProgress, position]);
+  }, [showYouTubeFrame, persistProgress, position]);
 
   useEffect(() => {
     const player = ytPlayerRef.current;
@@ -575,9 +603,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     const player = ytPlayerRef.current;
     if (!player) {
-      setLoadYouTube(true);
+      setNowPlayingOpen(true);
       return;
     }
+    setYouTubeNotice(null);
     if (restart || player.getVideoData?.()?.video_id !== videoId) {
       player.loadVideoById({ videoId, startSeconds: seconds });
     } else {
@@ -602,7 +631,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     });
     persistProgress(true, true);
     userWantsPlayingRef.current = true;
-    if (!songWithTime.youtubeId) setLoadYouTube(false);
+    setYouTubeNotice(null);
 
     if (androidBridge()) {
       if (!songWithTime.youtubeId) {
@@ -614,11 +643,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       nativePendingIdRef.current = '';
       nativeActiveRef.current = false;
       sendAndroidPlayback({ action: 'stop' });
-      showToast('Mở trình phát để tìm bản nghe nền cho bài YouTube này.', 'info');
     }
 
     if (songWithTime.youtubeId) {
       audioRef.current?.pause();
+      if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
       setIsPlaying(false);
       playYouTube(0, true);
     } else {
@@ -708,12 +737,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (nativeActiveRef.current) {
       sendAndroidPlayback({ action: 'pause' });
     } else if (currentSong?.youtubeId) {
-      ytPlayerRef.current?.pauseVideo();
+      const player = ytPlayerRef.current;
+      if (player) {
+        position.update(player.getCurrentTime(), true);
+        player.pauseVideo();
+      }
     } else {
       audioRef.current?.pause();
     }
     setIsPlaying(false);
     persistProgress(true, false);
+  }
+
+  function setIsNowPlayingOpen(open: boolean) {
+    if (!open && currentSongRef.current?.youtubeId) pauseSong();
+    setNowPlayingOpen(open);
   }
 
   const resumeSong = () => {
@@ -858,6 +896,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         queue,
         history,
         isNowPlayingOpen,
+        youTubeNotice,
         isLyricsOpen,
         isQueueOpen,
         playSong,
@@ -884,14 +923,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     >
       <AudioPositionContext.Provider value={position}>
         {children}
-        {loadYouTube && (
-          <div
-            className="pointer-events-none fixed bottom-0 right-0 -z-50 h-[150px] w-[200px] opacity-[0.01]"
-            aria-hidden="true"
-          >
-            <div id="soundwave-yt-player" />
-          </div>
-        )}
       </AudioPositionContext.Provider>
     </AudioContext.Provider>
   );
