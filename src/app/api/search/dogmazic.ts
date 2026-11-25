@@ -28,7 +28,7 @@ export async function searchDogmazic(query: string): Promise<Song[]> {
       const id = /\/song\.php\?action=show_song&song_id=(\d+)$/.exec(song?.getAttribute('href') ?? '')?.[1];
       const title = song?.text.trim();
       const time = row.querySelector('.cel_time')?.text.trim() ?? '';
-      const license = creativeCommonsLicense(row.querySelector('.cel_license a')?.getAttribute('href') ?? '', true);
+      const license = creativeCommonsLicense(row.querySelector('.cel_license a')?.getAttribute('href'), true);
       if (!id || !title || !license || !/^\d+(?::[0-5]\d){1,2}$/.test(time)) return [];
 
       const duration = time.split(':').reduce((total, part) => total * 60 + Number(part), 0);

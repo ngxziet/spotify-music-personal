@@ -1,4 +1,5 @@
-export function creativeCommonsLicense(href: string, allowNonCommercialAndNoDerivatives = false) {
+export function creativeCommonsLicense(href: unknown, allowNonCommercialAndNoDerivatives = false) {
+  if (typeof href !== 'string') return;
   const match = /^https?:\/\/creativecommons\.org\/(licenses\/(by|by-sa|by-nd|by-nc|by-nc-sa|by-nc-nd)|publicdomain\/(zero|mark))\/(\d\.\d)(?:\/([a-z]{2}))?(?:\/deed\.[a-z-]+)?\/?$/.exec(href.toLowerCase());
   if (!match) return;
   const [, path, license, publicDomain, version, jurisdiction] = match;

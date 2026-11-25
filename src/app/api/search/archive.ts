@@ -24,10 +24,10 @@ async function getArchiveItem(id: string, catalog: ArchiveCatalog, signal: Abort
     const restricted = item.metadata?.['access-restricted-item'];
     if (item.is_dark || restricted === 'true' || restricted === true) return [];
     const isFreeMusicArchive = catalog === 'freemusicarchive';
-    const license = creativeCommonsLicense(item.metadata?.licenseurl ?? '', isFreeMusicArchive);
+    const license = creativeCommonsLicense(item.metadata?.licenseurl, isFreeMusicArchive);
     if (!license || !Array.isArray(item.files)) return [];
     const creator = item.metadata?.creator;
-    const artist = Array.isArray(creator) ? creator.join(', ') : creator;
+    const artist = Array.isArray(creator) ? [...new Set(creator)].join(', ') : creator;
 
     return item.files.flatMap((file): Song[] => {
       const duration = Math.round(Number(file.length));
@@ -74,7 +74,7 @@ export async function searchArchive(query: string, catalog: ArchiveCatalog): Pro
     const hits = data.response?.docs;
     if (!Array.isArray(hits)) return [];
     const items = hits.filter((hit) => /^[a-zA-Z0-9_.-]+$/.test(hit.identifier)
-      && creativeCommonsLicense(hit.licenseurl ?? '', catalog === 'freemusicarchive'))
+      && creativeCommonsLicense(hit.licenseurl, catalog === 'freemusicarchive'))
       .slice(0, 3);
     return (await Promise.all(items.map(({ identifier }) => getArchiveItem(identifier, catalog, signal)))).flat();
   } catch {

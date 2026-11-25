@@ -110,7 +110,7 @@ function SearchContent({ initialQuery }: { initialQuery: string }) {
       </div>
 
       <p className="text-xs text-zinc-300">
-        Tìm bản đầy đủ từ Audius, Openverse, Internet Archive và thư viện trên máy.
+        Tìm bản đầy đủ từ Audius, Openverse, Internet Archive, Dogmazic, Free Music Archive và thư viện trên máy.
       </p>
 
       {/* Genre Pills */}
